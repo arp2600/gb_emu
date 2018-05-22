@@ -2,6 +2,14 @@
 use memory::Memory;
 use registers::Registers;
 
+// If we have a cpu struct
+// the body of the xor method could be as simple as
+//     self.xor(self.load_u8(self.pc + 1), 2)
+// or even
+//     self.xor(self.load_u8_imm(), 2)
+
+include!(concat!(env!("OUT_DIR"), "/generated_opcodes.rs"));
+
 pub fn illegal_instruction(_: &mut Registers, _: &mut Memory) {
     panic!("Illegal instruction!");
 }
@@ -10,34 +18,16 @@ pub fn prefix_cb(_: &mut Registers, _: &mut Memory) {
     panic!("Instruction prefix_cb should not be called!");
 }
 
-pub fn ld_06(regs: &mut Registers, mem: &mut Memory) {
-    regs.b = mem.get_u8(regs.pc + 1);
-    regs.pc += 2;
-}
-pub fn ld_0e(regs: &mut Registers, mem: &mut Memory) {
-    regs.c = mem.get_u8(regs.pc + 1);
-    regs.pc += 2;
-}
-pub fn ld_16(regs: &mut Registers, mem: &mut Memory) {
-    regs.d = mem.get_u8(regs.pc + 1);
-    regs.pc += 2;
-}
-pub fn ld_1e(regs: &mut Registers, mem: &mut Memory) {
-    regs.e = mem.get_u8(regs.pc + 1);
-    regs.pc += 2;
-}
-pub fn ld_26(regs: &mut Registers, mem: &mut Memory) {
-    regs.h = mem.get_u8(regs.pc + 1);
-    regs.pc += 2;
-}
-pub fn ld_2e(regs: &mut Registers, mem: &mut Memory) {
-    regs.l = mem.get_u8(regs.pc + 1);
-    regs.pc += 2;
+pub fn bit_check(regs: &mut Registers, value: u8) {
+    regs.f &= 0b0001_0000;
+    regs.set_flagh(true);
+    regs.set_flagz(value == 0);
 }
 
-pub fn ld_31(regs: &mut Registers, mem: &mut Memory) {
-    regs.sp = mem.get_u16(regs.pc + 1);
-    regs.pc += 3;
+pub fn xor_check(regs: &mut Registers) {
+    regs.clear_flags();
+    let flagz = regs.a == 0;
+    regs.set_flagz(flagz);
 }
 
 pub fn ld_32(regs: &mut Registers, mem: &mut Memory) {
@@ -46,32 +36,8 @@ pub fn ld_32(regs: &mut Registers, mem: &mut Memory) {
     regs.pc += 1;
 }
 
-pub fn xor_af(regs: &mut Registers, _: &mut Memory) {
-    regs.a = regs.a ^ regs.a;
-
-    regs.clear_flags();
-    let flagz = regs.a == 0;
-    regs.set_flagz(flagz);
-
-    regs.pc += 1;
-}
-
 pub fn nop_00(regs: &mut Registers, _: &mut Memory) {
     regs.pc += 1;
-}
-
-pub fn ld_21(regs: &mut Registers, mem: &mut Memory) {
-    let v = mem.get_u16(regs.pc + 1);
-    regs.set_hl(v);
-    regs.pc += 3;
-}
-
-pub fn bit_17c(regs: &mut Registers, _: &mut Memory) {
-    let t = regs.h & (1 << 7);
-    regs.f &= 0b0001_0000;
-    regs.set_flagh(true);
-    regs.set_flagz(t == 0);
-    regs.pc += 2;
 }
 
 pub fn jr_20(regs: &mut Registers, mem: &mut Memory) {
@@ -86,10 +52,6 @@ pub fn jr_20(regs: &mut Registers, mem: &mut Memory) {
     } else {
         regs.pc += 2;
     }
-}
-
-pub fn ld_01(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction ld_01 is not implemented");
 }
 
 pub fn ld_02(_: &mut Registers, _: &mut Memory) {
@@ -132,9 +94,6 @@ pub fn rrca_0f(_: &mut Registers, _: &mut Memory) {
 }
 pub fn stop_10(_: &mut Registers, _: &mut Memory) {
     panic!("Instruction stop_10 is not implemented");
-}
-pub fn ld_11(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction ld_11 is not implemented");
 }
 pub fn ld_12(_: &mut Registers, _: &mut Memory) {
     panic!("Instruction ld_12 is not implemented");
@@ -562,27 +521,6 @@ pub fn and_a6(_: &mut Registers, _: &mut Memory) {
 pub fn and_a7(_: &mut Registers, _: &mut Memory) {
     panic!("Instruction and_a7 is not implemented");
 }
-pub fn xor_a8(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction xor_a8 is not implemented");
-}
-pub fn xor_a9(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction xor_a9 is not implemented");
-}
-pub fn xor_aa(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction xor_aa is not implemented");
-}
-pub fn xor_ab(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction xor_ab is not implemented");
-}
-pub fn xor_ac(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction xor_ac is not implemented");
-}
-pub fn xor_ad(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction xor_ad is not implemented");
-}
-pub fn xor_ae(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction xor_ae is not implemented");
-}
 pub fn or_b0(_: &mut Registers, _: &mut Memory) {
     panic!("Instruction or_b0 is not implemented");
 }
@@ -741,9 +679,6 @@ pub fn jp_e9(_: &mut Registers, _: &mut Memory) {
 }
 pub fn ld_ea(_: &mut Registers, _: &mut Memory) {
     panic!("Instruction ld_ea is not implemented");
-}
-pub fn xor_ee(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction xor_ee is not implemented");
 }
 pub fn rst_ef(_: &mut Registers, _: &mut Memory) {
     panic!("Instruction rst_ef is not implemented");
@@ -978,195 +913,6 @@ pub fn srl_13e(_: &mut Registers, _: &mut Memory) {
 }
 pub fn srl_13f(_: &mut Registers, _: &mut Memory) {
     panic!("Instruction srl_13f is not implemented");
-}
-pub fn bit_140(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_140 is not implemented");
-}
-pub fn bit_141(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_141 is not implemented");
-}
-pub fn bit_142(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_142 is not implemented");
-}
-pub fn bit_143(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_143 is not implemented");
-}
-pub fn bit_144(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_144 is not implemented");
-}
-pub fn bit_145(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_145 is not implemented");
-}
-pub fn bit_146(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_146 is not implemented");
-}
-pub fn bit_147(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_147 is not implemented");
-}
-pub fn bit_148(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_148 is not implemented");
-}
-pub fn bit_149(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_149 is not implemented");
-}
-pub fn bit_14a(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_14a is not implemented");
-}
-pub fn bit_14b(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_14b is not implemented");
-}
-pub fn bit_14c(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_14c is not implemented");
-}
-pub fn bit_14d(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_14d is not implemented");
-}
-pub fn bit_14e(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_14e is not implemented");
-}
-pub fn bit_14f(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_14f is not implemented");
-}
-pub fn bit_150(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_150 is not implemented");
-}
-pub fn bit_151(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_151 is not implemented");
-}
-pub fn bit_152(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_152 is not implemented");
-}
-pub fn bit_153(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_153 is not implemented");
-}
-pub fn bit_154(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_154 is not implemented");
-}
-pub fn bit_155(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_155 is not implemented");
-}
-pub fn bit_156(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_156 is not implemented");
-}
-pub fn bit_157(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_157 is not implemented");
-}
-pub fn bit_158(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_158 is not implemented");
-}
-pub fn bit_159(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_159 is not implemented");
-}
-pub fn bit_15a(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_15a is not implemented");
-}
-pub fn bit_15b(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_15b is not implemented");
-}
-pub fn bit_15c(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_15c is not implemented");
-}
-pub fn bit_15d(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_15d is not implemented");
-}
-pub fn bit_15e(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_15e is not implemented");
-}
-pub fn bit_15f(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_15f is not implemented");
-}
-pub fn bit_160(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_160 is not implemented");
-}
-pub fn bit_161(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_161 is not implemented");
-}
-pub fn bit_162(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_162 is not implemented");
-}
-pub fn bit_163(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_163 is not implemented");
-}
-pub fn bit_164(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_164 is not implemented");
-}
-pub fn bit_165(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_165 is not implemented");
-}
-pub fn bit_166(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_166 is not implemented");
-}
-pub fn bit_167(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_167 is not implemented");
-}
-pub fn bit_168(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_168 is not implemented");
-}
-pub fn bit_169(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_169 is not implemented");
-}
-pub fn bit_16a(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_16a is not implemented");
-}
-pub fn bit_16b(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_16b is not implemented");
-}
-pub fn bit_16c(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_16c is not implemented");
-}
-pub fn bit_16d(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_16d is not implemented");
-}
-pub fn bit_16e(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_16e is not implemented");
-}
-pub fn bit_16f(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_16f is not implemented");
-}
-pub fn bit_170(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_170 is not implemented");
-}
-pub fn bit_171(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_171 is not implemented");
-}
-pub fn bit_172(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_172 is not implemented");
-}
-pub fn bit_173(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_173 is not implemented");
-}
-pub fn bit_174(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_174 is not implemented");
-}
-pub fn bit_175(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_175 is not implemented");
-}
-pub fn bit_176(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_176 is not implemented");
-}
-pub fn bit_177(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_177 is not implemented");
-}
-pub fn bit_178(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_178 is not implemented");
-}
-pub fn bit_179(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_179 is not implemented");
-}
-pub fn bit_17a(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_17a is not implemented");
-}
-pub fn bit_17b(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_17b is not implemented");
-}
-pub fn bit_17d(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_17d is not implemented");
-}
-pub fn bit_17e(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_17e is not implemented");
-}
-pub fn bit_17f(_: &mut Registers, _: &mut Memory) {
-    panic!("Instruction bit_17f is not implemented");
 }
 pub fn res_180(_: &mut Registers, _: &mut Memory) {
     panic!("Instruction res_180 is not implemented");
