@@ -1,0 +1,202 @@
+use super::memory::Memory;
+use super::registers::Registers;
+// use opcode_table::OPCODE_TABLE;
+
+pub struct Cpu<'a> {
+    registers: &'a mut Registers,
+    memory: &'a mut Memory<'a>,
+}
+
+impl<'a> Cpu<'a> {
+    pub fn new(registers: &'a mut Registers, memory: &'a mut Memory<'a>) -> Cpu<'a> {
+        Cpu { registers, memory }
+    }
+
+    pub fn tick(&mut self) {
+        self.fetch_and_execute();
+        println!("{:?}", self.registers);
+    }
+
+    fn fetch_and_execute(&mut self) {
+        let opcode = self.memory.get_u8(self.registers.pc);
+
+        match opcode {
+            0xcb => self.fetch_and_execute_cb(),
+            0x01 | 0x11 | 0x21 | 0x31 => self.ld_n_nn(opcode),
+            0xab...0xaf => self.xor(opcode),
+            0x32 => self.ldd_hl_a(),
+            0x20 | 0x28 | 0x30 | 0x38 => self.jr_cc_n(opcode),
+            0x06 | 0x0e | 0x16 | 0x1e | 0x26 | 0x2e => {
+                self.ld_nn_n(opcode);
+            },
+            0x0a | 0x1a | 0x3e | 0x78...0x7f | 0xfa => {
+                self.ld_a_n(opcode);
+            },
+            0xe2 => self.ld_c_a(),
+            _ => panic!("Instruction 0x{:02x} not implemented", opcode),
+        }
+    }
+
+    fn fetch_and_execute_cb(&mut self) {
+        self.registers.pc += 1;
+        let opcode = self.memory.get_u8(self.registers.pc);
+
+        match opcode {
+            0x40...0x7f => self.bit_b_r(opcode),
+            _ => panic!("Instruction 0xcb{:02x} not implemented", opcode),
+        }
+    }
+
+    fn get_source_u8(&mut self, index: u8) -> u8 {
+        match index {
+            0 => self.registers.b,
+            1 => self.registers.c,
+            2 => self.registers.d,
+            3 => self.registers.e,
+            4 => self.registers.h,
+            5 => self.registers.l,
+            6 => {
+                let hl = self.registers.get_hl();
+                self.memory.get_u8(hl)
+            }
+            7 => self.registers.a,
+            _ => panic!("Bad register {}", index),
+        }
+    }
+
+    fn set_dest_u8(&mut self, index: u8, value: u8) {
+        match index {
+            0 => self.registers.b = value,
+            1 => self.registers.c = value,
+            2 => self.registers.d = value,
+            3 => self.registers.e = value,
+            4 => self.registers.h = value,
+            5 => self.registers.l = value,
+            // 6 => {
+            //     let hl = self.registers.get_hl();
+            //     self.memory.get_u8(hl)
+            // }
+            // 7 => self.registers.a,
+            _ => panic!("Bad register {}", index),
+        }
+    }
+
+    fn load_imm_u8(&mut self) -> u8 {
+        self.memory.get_u8(self.registers.pc + 1)
+    }
+
+    fn load_imm_u16(&mut self) -> u16 {
+        self.memory.get_u16(self.registers.pc + 1)
+    }
+
+    /************************************************************
+                         Opcodes
+    ************************************************************/
+
+    fn ld_a_n(&mut self, opcode: u8) {
+        let n = match opcode {
+            0x78...0x7f => self.get_source_u8(opcode & 0b111),
+            0x3e => self.load_imm_u8(),
+            0xfa => {
+                let v = self.load_imm_u16();
+                self.memory.get_u8(v)
+            }
+            0x0a => {
+                let bc = self.registers.get_bc();
+                self.memory.get_u8(bc)
+            },
+            0x1a => {
+                let de = self.registers.get_de();
+                self.memory.get_u8(de)
+            },
+            x => panic!("Bad register {}", x),
+        };
+
+        self.registers.a = n;
+
+        match opcode {
+            0x3e => self.registers.pc += 2,
+            0xfa => self.registers.pc += 3,
+            _ => self.registers.pc += 1,
+        };
+    }
+
+    fn ld_c_a(&mut self) {
+        let addr = 0xff00 + self.registers.c as u16;
+        self.memory.set_u8(addr, self.registers.a);
+        self.registers.pc += 1;
+    }
+
+    fn ld_nn_n(&mut self, opcode: u8) {
+        let dest_index = (opcode & 0b0011_1000) >> 3;
+        let value = self.load_imm_u8();
+        self.set_dest_u8(dest_index, value);
+        self.registers.pc += 2;
+    }
+
+    fn jr_cc_n(&mut self, opcode: u8) {
+        let condition = match (opcode & 0b11000) >> 3 {
+            0 => !self.registers.flagz(),
+            1 => self.registers.flagz(),
+            2 => !self.registers.flagc(),
+            3 => self.registers.flagc(),
+            x => panic!("Bad condition {}", x),
+        };
+
+        if condition {
+            let v = self.load_imm_u8();
+            self.registers.pc += 2;
+            if v & 0b1000_0000 != 0 {
+                self.registers.pc -= (!v + 1) as u16;
+            } else {
+                self.registers.pc += v as u16;
+            }
+        } else {
+            self.registers.pc += 2;
+        }
+    }
+
+    fn ldd_hl_a(&mut self) {
+        let hl = self.registers.hld();
+        self.memory.set_u8(hl, self.registers.a);
+        self.registers.pc += 1;
+    }
+
+    fn xor(&mut self, opcode: u8) {
+        let source_index = opcode & 0b111;
+        let x = self.get_source_u8(source_index);
+
+        self.registers.a ^= x;
+        self.registers.clear_flags();
+        let flagz = self.registers.a == 0;
+        self.registers.set_flagz(flagz);
+        self.registers.pc += 1;
+    }
+
+    fn ld_n_nn(&mut self, opcode: u8) {
+        let reg_index = (opcode & 0b0011_0000) >> 4;
+        let value = self.load_imm_u16();
+        match reg_index {
+            0 => self.registers.set_bc(value),
+            1 => self.registers.set_de(value),
+            2 => self.registers.set_hl(value),
+            3 => self.registers.sp = value,
+            _ => panic!("Bad register {}", reg_index),
+        }
+        self.registers.pc += 3;
+    }
+
+    fn bit_b_r(&mut self, opcode: u8) {
+        let source_index = opcode & 0b111;
+        let x = self.get_source_u8(source_index);
+        let shift = (opcode & 0b111000) >> 3;
+
+        let t = x & (1 << shift);
+
+        self.registers.f &= 0b0001_0000;
+        self.registers.set_flagh(true);
+        self.registers.set_flagz(t == 0);
+
+        self.registers.pc += 1;
+    }
+}

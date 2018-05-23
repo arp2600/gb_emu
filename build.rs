@@ -27,7 +27,7 @@ impl<'a> FunctionGenerator<'a> {
 
     fn create_ld_r_n(&mut self, opcode: &str, reg: &str) {
         let template = "pub fn ld_{opcode}({args}) {{
-    regs.{reg} = mem.get_u8(regs.pc + 1);
+    regs.{reg} = _mem.get_u8(regs.pc + 1);
     regs.pc += 2;
 }}
 
@@ -41,7 +41,7 @@ impl<'a> FunctionGenerator<'a> {
 
     fn create_ld_rr_nn(&mut self, opcode: &str, reg: &str) {
         let template = "pub fn ld_{opcode}({args}) {{
-    let v = mem.get_u16(regs.pc + 1);
+    let v = _mem.get_u16(regs.pc + 1);
     regs.set_{reg}(v);
     regs.pc += 3;
 }}
@@ -89,7 +89,7 @@ impl<'a> FunctionGenerator<'a> {
 
 fn main() {
     let mut generator = FunctionGenerator::new("generated_opcodes.rs");
-    generator.add_var("args", "regs: &mut Registers, mem: &mut Memory");
+    generator.add_var("args", "regs: &mut Registers, _mem: &mut Memory");
 
     // 8 bit load immediate
     generator.create_ld_r_n("06", "b");
@@ -112,10 +112,11 @@ fn main() {
     generator.create_xor_r("ab", "regs.e", "1");
     generator.create_xor_r("ac", "regs.h", "1");
     generator.create_xor_r("ad", "regs.l", "1");
-    generator.create_xor_r("ae", "mem.get_u8(regs.get_hl())", "1");
-    generator.create_xor_r("ee", "mem.get_u8(regs.pc + 1)", "2");
+    generator.create_xor_r("ae", "_mem.get_u8(regs.get_hl())", "1");
+    generator.create_xor_r("ee", "_mem.get_u8(regs.pc + 1)", "2");
 
-    { // create all bit_b_r functions
+    {
+        // create all bit_b_r functions
         let srcs = [
             "regs.b",
             "regs.c",
@@ -123,7 +124,7 @@ fn main() {
             "regs.e",
             "regs.h",
             "regs.l",
-            "mem.get_u8(regs.get_hl())",
+            "_mem.get_u8(regs.get_hl())",
             "regs.a",
         ];
 
