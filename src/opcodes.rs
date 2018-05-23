@@ -1,45 +1,45 @@
 // #![allow(dead_code)]
 // use memory::Memory;
 // use registers::Registers;
-// 
+//
 // // If we have a cpu struct
 // // the body of the xor method could be as simple as
 // //     self.xor(self.load_u8(self.pc + 1), 2)
 // // or even
 // //     self.xor(self.load_u8_imm(), 2)
-// 
+//
 // include!(concat!(env!("OUT_DIR"), "/generated_opcodes.rs"));
-// 
+//
 // pub fn illegal_instruction(_: &mut Registers, _: &mut Memory) {
 //     panic!("Illegal instruction!");
 // }
-// 
+//
 // pub fn prefix_cb(_: &mut Registers, _: &mut Memory) {
 //     panic!("Instruction prefix_cb should not be called!");
 // }
-// 
+//
 // pub fn bit_check(regs: &mut Registers, value: u8) {
 //     regs.f &= 0b0001_0000;
 //     regs.set_flagh(true);
 //     regs.set_flagz(value == 0);
 // }
-// 
+//
 // pub fn xor_check(regs: &mut Registers) {
 //     regs.clear_flags();
 //     let flagz = regs.a == 0;
 //     regs.set_flagz(flagz);
 // }
-// 
+//
 // pub fn ld_32(regs: &mut Registers, mem: &mut Memory) {
 //     let hl = regs.hld();
 //     mem.set_u8(hl, regs.a);
 //     regs.pc += 1;
 // }
-// 
+//
 // pub fn nop_00(regs: &mut Registers, _: &mut Memory) {
 //     regs.pc += 1;
 // }
-// 
+//
 // pub fn jr_20(regs: &mut Registers, mem: &mut Memory) {
 //     if !regs.flagz() {
 //         let v = mem.get_u8(regs.pc + 1);
@@ -53,15 +53,15 @@
 //         regs.pc += 2;
 //     }
 // }
-// 
+//
 // pub fn ld_02(_: &mut Registers, _: &mut Memory) {
 //     panic!("Instruction ld_02 is not implemented");
 // }
-// 
+//
 // pub fn inc_03(_: &mut Registers, _: &mut Memory) {
 //     panic!("Instruction inc_03 is not implemented");
 // }
-// 
+//
 // pub fn inc_04(_: &mut Registers, _: &mut Memory) {
 //     panic!("Instruction inc_04 is not implemented");
 // }

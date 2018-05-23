@@ -1,7 +1,7 @@
 // use memory::Memory;
 // use opcodes::*;
 // use registers::Registers;
-// 
+//
 // pub const OPCODE_TABLE: &'static [fn(&mut Registers, &mut Memory)] = &[
 //     nop_00,
 //     ld_01,
