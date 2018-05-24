@@ -33,6 +33,9 @@ impl<'a> Cpu<'a> {
                 self.ld_a_n(opcode);
             }
             0xe2 => self.ld_c_a(),
+            0x3c | 0x04 | 0x0c | 0x14 | 0x1c | 0x24 | 0x2c | 0x34 => {
+                self.inc_n(opcode);
+            }
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -92,6 +95,17 @@ impl<'a> Cpu<'a> {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn inc_n(&mut self, opcode: u8) {
+        let reg_index = (opcode & 0b11_1000) >> 3;
+        let source = self.get_source_u8(reg_index);
+        let result = source + 1;
+        self.registers.set_flagz(result == 0);
+        self.registers.set_flagn(false);
+        self.registers.set_flagh((source & 0xf) + 1 > 0xf);
+        self.set_dest_u8(reg_index, result);
+        self.registers.pc += 1;
+    }
 
     fn ld_a_n(&mut self, opcode: u8) {
         let n = match opcode {

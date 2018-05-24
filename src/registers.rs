@@ -82,7 +82,7 @@ impl Registers {
     }
 
     create_get_set_flag!(flagz, set_flagz, 0b1000_0000);
-    // create_get_set_flag!(flagn, set_flagn, 0b0100_0000);
+    create_get_set_flag!(flagn, set_flagn, 0b0100_0000);
     create_get_set_flag!(flagh, set_flagh, 0b0010_0000);
     create_get_set_flag!(flagc, set_flagc, 0b0001_0000);
 }
