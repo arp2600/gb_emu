@@ -1,10 +1,53 @@
+use std::fs;
+
+const ROM_BANK_SIZE: usize = 0x4000;
+
+pub struct Cartridge {
+    zero_bank: Vec<u8>,
+    other_banks: Vec<Vec<u8>>,
+}
+
+impl Cartridge {
+    pub fn from_file(file_path: &str) -> Cartridge {
+        let mut full_rom = fs::read(file_path).unwrap();
+        let mut remaining = full_rom.split_off(ROM_BANK_SIZE);
+        let mut other_banks = Vec::new();
+        while remaining.len() > ROM_BANK_SIZE {
+            let tail = remaining.split_off(ROM_BANK_SIZE);
+            other_banks.push(remaining);
+            remaining = tail;
+        }
+
+        assert_eq!(full_rom.len(), ROM_BANK_SIZE);
+        for bank in &other_banks {
+            assert_eq!(bank.len(), ROM_BANK_SIZE);
+        }
+
+        Cartridge {
+            zero_bank: full_rom,
+            other_banks: other_banks,
+        }
+    }
+
+    fn get_u8(&self, index: u16) -> u8 {
+        match index {
+            0x0...0x3fff => self.zero_bank[index as usize],
+            _ => panic!("Bad read at {}", index),
+        }
+    }
+}
+
 pub struct Memory<'a> {
     boot_rom: &'a mut [u8],
+    cartridge: &'a mut Cartridge,
 }
 
 impl<'a> Memory<'a> {
-    pub fn new(boot_rom: &mut [u8]) -> Memory {
-        Memory { boot_rom }
+    pub fn new(boot_rom: &'a mut [u8], cartridge: &'a mut Cartridge) -> Memory<'a> {
+        Memory {
+            boot_rom,
+            cartridge,
+        }
     }
 
     pub fn set_u8(&mut self, index: u16, value: u8) {
@@ -42,10 +85,10 @@ impl<'a> Memory<'a> {
     }
 
     pub fn get_u8(&self, index: u16) -> u8 {
-        if (index as usize) < self.boot_rom.len() {
-            self.boot_rom[index as usize]
-        } else {
-            0
+        match index {
+            x if (x as usize) < self.boot_rom.len() => self.boot_rom[x as usize],
+            0x0...0x8000 => self.cartridge.get_u8(index),
+            x => panic!("Bad memory read at {}", x),
         }
     }
 
