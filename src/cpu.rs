@@ -1,6 +1,5 @@
 use super::memory::Memory;
 use super::registers::Registers;
-// use opcode_table::OPCODE_TABLE;
 
 pub struct Cpu<'a> {
     registers: &'a mut Registers,
@@ -36,6 +35,11 @@ impl<'a> Cpu<'a> {
             0x3c | 0x04 | 0x0c | 0x14 | 0x1c | 0x24 | 0x2c | 0x34 => {
                 self.inc_n(opcode);
             }
+            0x7F | 0x47 | 0x4F | 0x57 | 0x5F | 0x67 | 0x6F | 0x02 | 0x12 | 0x77 | 0xEA => {
+                self.ld_n_a(opcode);
+            }
+            0xe0 => self.ldh_n_a(),
+            0xcd => self.call_nn(),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -95,6 +99,49 @@ impl<'a> Cpu<'a> {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn call_nn(&mut self) {
+        let addr = self.load_imm_u16();
+        self.registers.pc += 3;
+        self.registers.sp -= 2;
+        self.memory.set_u16(self.registers.sp, self.registers.pc);
+        self.registers.pc = addr;
+    }
+
+    fn ldh_n_a(&mut self) {
+        let addr = self.load_imm_u8() as u16 + 0xff00;
+        self.memory.set_u8(addr, self.registers.a);
+        self.registers.pc += 2;
+    }
+
+    fn ld_n_a(&mut self, opcode: u8) {
+        let value = self.registers.a;
+        match opcode {
+            0x7f | 0x47 | 0x4f | 0x57 | 0x5f | 0x67 | 0x6f => {
+                let reg_index = (opcode & 0b0011_1000) >> 3;
+                self.set_dest_u8(reg_index, value);
+            }
+            0x02 => {
+                let addr = self.registers.get_bc();
+                self.memory.set_u8(addr, value);
+            }
+            0x12 => {
+                let addr = self.registers.get_de();
+                self.memory.set_u8(addr, value);
+            }
+            0x77 => {
+                let addr = self.registers.get_hl();
+                self.memory.set_u8(addr, value);
+            }
+            0xea => {
+                let addr = self.load_imm_u16();
+                self.memory.set_u8(addr, value);
+                self.registers.pc += 2;
+            }
+            x => panic!("Bad opcode {}", x),
+        };
+        self.registers.pc += 1;
+    }
 
     fn inc_n(&mut self, opcode: u8) {
         let reg_index = (opcode & 0b11_1000) >> 3;

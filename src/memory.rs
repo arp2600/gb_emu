@@ -42,12 +42,20 @@ impl<'a> Memory<'a> {
     }
 
     pub fn get_u8(&self, index: u16) -> u8 {
-        self.boot_rom[index as usize]
+        if (index as usize) < self.boot_rom.len() {
+            self.boot_rom[index as usize]
+        } else {
+            0
+        }
     }
 
     pub fn get_u16(&self, index: u16) -> u16 {
         let high = self.boot_rom[index as usize + 1] as u16;
         let low = self.boot_rom[index as usize] as u16;
         (high << 8) | low
+    }
+
+    pub fn set_u16(&self, index: u16, value: u16) {
+        // TODO
     }
 }
