@@ -1,6 +1,7 @@
 use std::fs;
 
 const ROM_BANK_SIZE: usize = 0x4000;
+const HRAM_SIZE: usize = 0x7e;
 
 pub struct Cartridge {
     zero_bank: Vec<u8>,
@@ -29,9 +30,9 @@ impl Cartridge {
         }
     }
 
-    fn get_u8(&self, index: u16) -> u8 {
+    fn get_u8(&self, index: usize) -> u8 {
         match index {
-            0x0...0x3fff => self.zero_bank[index as usize],
+            0x0...0x3fff => self.zero_bank[index],
             _ => panic!("Bad read at {}", index),
         }
     }
@@ -40,6 +41,7 @@ impl Cartridge {
 pub struct Memory<'a> {
     boot_rom: &'a mut [u8],
     cartridge: &'a mut Cartridge,
+    hram: [u8; HRAM_SIZE],
 }
 
 impl<'a> Memory<'a> {
@@ -47,6 +49,7 @@ impl<'a> Memory<'a> {
         Memory {
             boot_rom,
             cartridge,
+            hram: [0; HRAM_SIZE],
         }
     }
 
@@ -85,20 +88,66 @@ impl<'a> Memory<'a> {
     }
 
     pub fn get_u8(&self, index: u16) -> u8 {
+        let index = index as usize;
         match index {
-            x if (x as usize) < self.boot_rom.len() => self.boot_rom[x as usize],
+            x if x < self.boot_rom.len() => self.boot_rom[x],
             0x0...0x8000 => self.cartridge.get_u8(index),
+            0xff80...0xfffe => self.hram[index - 0xff80],
             x => panic!("Bad memory read at {}", x),
         }
     }
 
     pub fn get_u16(&self, index: u16) -> u16 {
-        let high = self.boot_rom[index as usize + 1] as u16;
-        let low = self.boot_rom[index as usize] as u16;
-        (high << 8) | low
+        let index = index as usize;
+        match index {
+            x if x < self.boot_rom.len() => get_u16(&self.boot_rom, index),
+            0xff80...0xfffe => get_u16(&self.hram, index - 0xff80),
+            x => {
+                let location = index_to_location(index);
+                panic!("Bad read: {}", location);
+            }
+        }
     }
 
-    pub fn set_u16(&self, index: u16, value: u16) {
-        // TODO
+    pub fn set_u16(&mut self, index: u16, value: u16) {
+        let index = index as usize;
+        match index {
+            0xff80...0xfffe => set_u16(&mut self.hram, index - 0xff80, value),
+            x => {
+                let location = index_to_location(index);
+                panic!("Bad write: {}", location);
+            }
+        }
     }
+}
+
+pub fn index_to_location(index: usize) -> String {
+    match index {
+        0x0000...0x3FFF => format!("ROM bank 0[{}]", index),
+        0x4000...0x7FFF => format!("ROM bank n[{}]", index),
+        0x8000...0x9FFF => format!("VRAM[{}]", index),
+        0xA000...0xBFFF => format!("RAM[{}]", index),
+        0xC000...0xCFFF => format!("WRAM0[{}]", index),
+        0xD000...0xDFFF => format!("WRAM1[{}]", index),
+        0xE000...0xFDFF => format!("ECHO[{}]", index),
+        0xFE00...0xFE9F => format!("OAM[{}]", index),
+        0xFEA0...0xFEFF => format!("Not usable[{}]", index),
+        0xFF00...0xFF7F => format!("IO[{}]", index),
+        0xFF80...0xFFFE => format!("HRAM[{}]", index),
+        0xFFFF => format!("InterruptEnableRegister"),
+        _ => panic!("Bad index {}", index),
+    }
+}
+
+fn get_u16(mem: &[u8], index: usize) -> u16 {
+    let high = mem[index + 1] as u16;
+    let low = mem[index] as u16;
+    (high << 8) | low
+}
+
+fn set_u16(mem: &mut [u8], index: usize, value: u16) {
+    let high = value >> 8;
+    let low = value & 0xff;
+    mem[index + 1] = high as u8;
+    mem[index] = low as u8;
 }

@@ -40,6 +40,9 @@ impl<'a> Cpu<'a> {
             }
             0xe0 => self.ldh_n_a(),
             0xcd => self.call_nn(),
+            0xf5 | 0xc5 | 0xd5 | 0xe5 => self.push_nn(opcode),
+            0xf1 | 0xc1 | 0xd1 | 0xe1 => self.pop_nn(opcode),
+            0x17 => self.rla(),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -50,6 +53,7 @@ impl<'a> Cpu<'a> {
 
         match opcode {
             0x40...0x7f => self.bit_b_r(opcode),
+            0x10...0x17 => self.rl_n(opcode),
             _ => panic!("Instruction 0xcb{:02x} not implemented", opcode),
         }
     }
@@ -99,6 +103,67 @@ impl<'a> Cpu<'a> {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn pop_nn(&mut self, opcode: u8) {
+        let sp = self.registers.sp;
+        let value = self.memory.get_u16(sp);
+
+        match opcode {
+            0xf1 => self.registers.set_af(value),
+            0xc1 => self.registers.set_bc(value),
+            0xd1 => self.registers.set_de(value),
+            0xe1 => self.registers.set_hl(value),
+            _ => panic!("Bad opcode {}", opcode),
+        };
+
+        self.registers.sp += 2;
+        self.registers.pc += 1;
+    }
+
+    fn rla(&mut self) {
+        let a = self.registers.a;
+        let mut value = a << 1;
+        if self.registers.flagc() {
+            value += 1;
+        };
+
+        self.registers.clear_flags();
+        self.registers.set_flagz(value == 0);
+        self.registers.set_flagc((a & 0b1000_0000) != 0);
+
+        self.registers.a = value;
+        self.registers.pc += 1;
+    }
+
+    fn rl_n(&mut self, opcode: u8) {
+        let reg_index = opcode & 0b0000_0111;
+        let source = self.get_source_u8(reg_index);
+        let mut value = source << 1;
+        if self.registers.flagc() {
+            value += 1;
+        };
+
+        self.registers.clear_flags();
+        self.registers.set_flagz(value == 0);
+        self.registers.set_flagc((source & 0b1000_0000) != 0);
+
+        self.set_dest_u8(reg_index, value);
+        self.registers.pc += 1;
+    }
+
+    fn push_nn(&mut self, opcode: u8) {
+        let value = match opcode {
+            0xf5 => self.registers.get_af(),
+            0xc5 => self.registers.get_bc(),
+            0xd5 => self.registers.get_de(),
+            0xe5 => self.registers.get_hl(),
+            _ => panic!("Bad opcode {}", opcode),
+        };
+
+        self.memory.set_u16(self.registers.sp - 2, value);
+        self.registers.sp -= 2;
+        self.registers.pc += 1;
+    }
 
     fn call_nn(&mut self) {
         let addr = self.load_imm_u16();
