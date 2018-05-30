@@ -77,6 +77,13 @@ impl Registers {
         hl
     }
 
+    // get value of, and then increment, the hl register
+    pub fn hli(&mut self) -> u16 {
+        let hl = self.get_hl();
+        self.set_hl(hl + 1);
+        hl
+    }
+
     pub fn clear_flags(&mut self) {
         self.f = 0;
     }

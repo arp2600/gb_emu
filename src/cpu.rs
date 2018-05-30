@@ -43,6 +43,10 @@ impl<'a> Cpu<'a> {
             0xf5 | 0xc5 | 0xd5 | 0xe5 => self.push_nn(opcode),
             0xf1 | 0xc1 | 0xd1 | 0xe1 => self.pop_nn(opcode),
             0x17 => self.rla(),
+            0x3d | 0x05 | 0x0d | 0x15 | 0x1d | 0x25 | 0x2d | 0x35 => {
+                self.dec_n(opcode);
+            }
+            0x22 => self.ldi_hl_a(),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -103,6 +107,25 @@ impl<'a> Cpu<'a> {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn ldi_hl_a(&mut self) {
+        let hl = self.registers.hli();
+        self.memory.set_u8(hl, self.registers.a);
+        self.registers.pc += 1;
+    }
+
+    fn dec_n(&mut self, opcode: u8) {
+        let reg_index = (opcode & 0b0011_1000) >> 3;
+        let source = self.get_source_u8(reg_index);
+        let result = source - 1;
+
+        self.registers.set_flagz(result == 0);
+        self.registers.set_flagn(true);
+        self.registers.set_flagh((source & 0xf) - 1 < 0);
+
+        self.set_dest_u8(reg_index, result);
+        self.registers.pc += 1;
+    }
 
     fn pop_nn(&mut self, opcode: u8) {
         let sp = self.registers.sp;
