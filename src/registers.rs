@@ -62,14 +62,6 @@ impl Registers {
     create_get_set!(get_de, set_de, d, e);
     create_get_set!(get_hl, set_hl, h, l);
 
-    pub fn get_sp(&self) -> u16 {
-        self.sp
-    }
-
-    pub fn set_sp(&mut self, value: u16) {
-        self.sp = value;
-    }
-
     // get value of, and then decrement, the hl register
     pub fn hld(&mut self) -> u16 {
         let hl = self.get_hl();
