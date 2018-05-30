@@ -103,7 +103,7 @@ impl<'a> Memory<'a> {
             x if x < self.boot_rom.len() => get_u16(&self.boot_rom, index),
             0xff80...0xfffe => get_u16(&self.hram, index - 0xff80),
             x => {
-                let location = index_to_location(index);
+                let location = index_to_location(x);
                 panic!("Bad read: {}", location);
             }
         }
@@ -114,7 +114,7 @@ impl<'a> Memory<'a> {
         match index {
             0xff80...0xfffe => set_u16(&mut self.hram, index - 0xff80, value),
             x => {
-                let location = index_to_location(index);
+                let location = index_to_location(x);
                 panic!("Bad write: {}", location);
             }
         }

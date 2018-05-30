@@ -35,7 +35,7 @@ impl<'a> Cpu<'a> {
             0x3c | 0x04 | 0x0c | 0x14 | 0x1c | 0x24 | 0x2c | 0x34 => {
                 self.inc_n(opcode);
             }
-            0x7F | 0x47 | 0x4F | 0x57 | 0x5F | 0x67 | 0x6F | 0x02 | 0x12 | 0x77 | 0xEA => {
+            0x47 | 0x4F | 0x57 | 0x5F | 0x67 | 0x6F | 0x02 | 0x12 | 0x77 | 0xEA => {
                 self.ld_n_a(opcode);
             }
             0xe0 => self.ldh_n_a(),
@@ -121,7 +121,7 @@ impl<'a> Cpu<'a> {
 
         self.registers.set_flagz(result == 0);
         self.registers.set_flagn(true);
-        self.registers.set_flagh((source & 0xf) - 1 < 0);
+        self.registers.set_flagh(source & 0xf == 0);
 
         self.set_dest_u8(reg_index, result);
         self.registers.pc += 1;
