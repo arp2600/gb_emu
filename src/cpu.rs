@@ -50,6 +50,8 @@ impl<'a> Cpu<'a> {
             }
             0x22 => self.ldi_hl_a(),
             0x03 | 0x13 | 0x23 | 0x33 => self.inc_nn(opcode),
+            0xc9 => self.ret(),
+            0xb8...0xbf | 0xfe => self.cp_n(opcode),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -94,7 +96,7 @@ impl<'a> Cpu<'a> {
             //     let hl = self.registers.get_hl();
             //     self.memory.get_u8(hl)
             // }
-            // 7 => self.registers.a,
+            7 => self.registers.a = value,
             _ => panic!("Bad register {}", index),
         }
     }
@@ -110,6 +112,37 @@ impl<'a> Cpu<'a> {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn cp_n(&mut self, opcode: u8) {
+        let n = match opcode {
+            0xb8...0xbf => {
+                let reg_index = opcode & 0b0000_0111;
+                self.get_source_u8(reg_index)
+            }
+            0xfe => {
+                let n = self.load_imm_u8();
+                self.registers.pc += 1;
+                n
+            }
+            _ => panic!("Bad opcode {}", opcode),
+        };
+
+        let a = self.registers.a;
+
+        self.registers.set_flagz(a == n);
+        self.registers.set_flagn(true);
+        self.registers.set_flagh(a & 0xf < n & 0xf);
+        self.registers.set_flagc(a < n);
+
+        self.registers.pc += 1;
+    }
+
+    fn ret(&mut self) {
+        let sp = self.registers.sp;
+        let addr = self.memory.get_u16(sp);
+        self.registers.sp += 2;
+        self.registers.pc = addr;
+    }
 
     fn ldi_hl_a(&mut self) {
         let hl = self.registers.hli();
