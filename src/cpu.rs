@@ -15,7 +15,7 @@ impl<'a> Cpu<'a> {
     pub fn tick(&mut self) {
         self.instruction_counter += 1;
         self.fetch_and_execute();
-        println!("{:?}", self.registers);
+        // println!("{:?}", self.registers);
     }
 
     fn fetch_and_execute(&mut self) {
@@ -52,6 +52,8 @@ impl<'a> Cpu<'a> {
             0x03 | 0x13 | 0x23 | 0x33 => self.inc_nn(opcode),
             0xc9 => self.ret(),
             0xb8...0xbf | 0xfe => self.cp_n(opcode),
+            0x18 => self.jr_n(),
+            0xf0 => self.ldh_a_n(),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -112,6 +114,18 @@ impl<'a> Cpu<'a> {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn ldh_a_n(&mut self) {
+        let n = self.load_imm_u8();
+        let v = self.memory.get_u8(0xff00 + n as u16);
+        self.registers.a = v;
+        self.registers.pc += 2;
+    }
+
+    fn jr_n(&mut self) {
+        let n = self.load_imm_u8();
+        self.registers.pc = signed_add_u16_u8(self.registers.pc + 2, n);
+    }
 
     fn cp_n(&mut self, opcode: u8) {
         let n = match opcode {
@@ -356,12 +370,7 @@ impl<'a> Cpu<'a> {
 
         if condition {
             let v = self.load_imm_u8();
-            self.registers.pc += 2;
-            if v & 0b1000_0000 != 0 {
-                self.registers.pc -= (!v + 1) as u16;
-            } else {
-                self.registers.pc += v as u16;
-            }
+            self.registers.pc = signed_add_u16_u8(self.registers.pc + 2, v);
         } else {
             self.registers.pc += 2;
         }
@@ -409,5 +418,14 @@ impl<'a> Cpu<'a> {
         self.registers.set_flagz(t == 0);
 
         self.registers.pc += 1;
+    }
+}
+
+// Add a 'signed' u8 to an unsigned u16
+fn signed_add_u16_u8(lhs: u16, rhs: u8) -> u16 {
+    if rhs & 0b1000_0000 != 0 {
+        lhs - (!rhs + 1) as u16
+    } else {
+        lhs + rhs as u16
     }
 }
