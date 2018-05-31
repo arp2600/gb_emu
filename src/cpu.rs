@@ -4,14 +4,16 @@ use super::registers::Registers;
 pub struct Cpu<'a> {
     registers: &'a mut Registers,
     memory: &'a mut Memory<'a>,
+    instruction_counter: usize,
 }
 
 impl<'a> Cpu<'a> {
     pub fn new(registers: &'a mut Registers, memory: &'a mut Memory<'a>) -> Cpu<'a> {
-        Cpu { registers, memory }
+        Cpu { registers, memory, instruction_counter: 0 }
     }
 
     pub fn tick(&mut self) {
+        self.instruction_counter += 1;
         self.fetch_and_execute();
         println!("{:?}", self.registers);
     }
