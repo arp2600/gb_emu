@@ -1,4 +1,5 @@
 mod cpu;
+mod lcd_registers;
 mod memory;
 mod opcode_table;
 mod opcodes;

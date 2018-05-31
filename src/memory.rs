@@ -1,3 +1,4 @@
+use super::lcd_registers::LCDRegisters;
 use std::fs;
 
 const ROM_BANK_SIZE: usize = 0x4000;
@@ -42,6 +43,7 @@ pub struct Memory<'a> {
     boot_rom: &'a mut [u8],
     cartridge: &'a mut Cartridge,
     hram: [u8; HRAM_SIZE],
+    lcd_registers: LCDRegisters,
 }
 
 impl<'a> Memory<'a> {
@@ -50,40 +52,41 @@ impl<'a> Memory<'a> {
             boot_rom,
             cartridge,
             hram: [0; HRAM_SIZE],
+            lcd_registers: LCDRegisters::new(),
+        }
+    }
+
+    fn set_io(&mut self, index: usize, value: u8) {
+        match index {
+            0xff40...0xff6b => self.lcd_registers.set(index, value),
+            _ => println!("{} = {:#08b}", index_to_location(index), value),
         }
     }
 
     pub fn set_u8(&mut self, index: u16, value: u8) {
-        if (index as usize) < self.boot_rom.len() {
-            self.boot_rom[index as usize] = value;
+        let index = index as usize;
+        match index {
+            0x0...0x7FFF => panic!("Cannot write to {}", index_to_location(index)),
+            0x8000...0x9FFF => (),                        // VRAM
+            0xff00...0xff7f => self.set_io(index, value), //println!("{} = {}", index_to_location(index), value),
+            0xff80...0xfffe => self.hram[index - 0xff80] = value,
+            x => {
+                let location = index_to_location(x);
+                panic!("Bad read: {}", location);
+            }
         }
-        // match index {
-        //     0x0000...0x3FFF => println!("write ROM bank 0"),
-        //     0x4000...0x7FFF => println!("write ROM bank x"),
-        //     0x8000...0x9FFF => println!("VRAM[{}] = {}", index - 0x8000, value),
-        //     0xA000...0xBFFF => println!("RAM[{}] = {}", index - 0xA000, value),
-        //     0xC000...0xCFFF => println!("WRAM0[{}] = {}", index - 0xC000, value),
-        //     0xD000...0xDFFF => println!("WRAM1[{}] = {}", index - 0xD000, value),
-        //     0xE000...0xFDFF => println!("ECHO[{}] = {}", index - 0xE000, value),
-        //     0xFE00...0xFE9F => println!("OAM[{}] = {}", index - 0xFE00, value),
-        //     0xFEA0...0xFEFF => println!("Error"),
-        //     0xFF00...0xFF7F => println!("IO[{}] = {}", index - 0xFF00, value),
-        //     0xFF80...0xFFFE => println!("HRAM[{}] = {}", index - 0xFF00, value),
-        //     0xFFFF => println!("enable interrups = {}", value),
-        //     _ => panic!("error writing!"),
-        // }
-
-        // 0x0000-0x3FFF   16KB ROM Bank 00     (in cartridge, fixed at bank 00)
-        // 0x4000-0x7FFF   16KB ROM Bank 01..NN (in cartridge, switchable bank number)
-        // 0x8000-0x9FFF   8KB Video RAM (VRAM) (switchable bank 0-1 in CGB Mode)
-        // 0xA000-0xBFFF   8KB External RAM     (in cartridge, switchable bank, if any)
-        // 0xC000-0xCFFF   4KB Work RAM Bank 0 (WRAM)
-        // 0xD000-0xDFFF   4KB Work RAM Bank 1 (WRAM)  (switchable bank 1-7 in CGB Mode)
-        // 0xE000-0xFDFF   Same as C000-DDFF (ECHO)    (typically not used)
-        // 0xFE00-0xFE9F   Sprite Attribute Table (OAM)
-        // 0xFEA0-0xFEFF   Not Usable
-        // 0xFF00-0xFF7F   I/O Ports
-        // 0xFF80-0xFFFE   High RAM (HRAM)
+        //
+        // 0x0000-0x3FFF 16KB ROM Bank 00
+        // 0x4000-0x7FFF 16KB ROM Bank 01..NN
+        // 0x8000-0x9FFF 8KB Video RAM (VRAM)
+        // 0xA000-0xBFFF 8KB External RAM
+        // 0xC000-0xCFFF 4KB Work RAM Bank 0 (WRAM)
+        // 0xD000-0xDFFF 4KB Work RAM Bank 1 (WRAM)
+        // 0xE000-0xFDFF Same as C000-DDFF (ECHO)
+        // 0xFE00-0xFE9F Sprite Attribute Table (OAM)
+        // 0xFEA0-0xFEFF Not Usable
+        // 0xFF00-0xFF7F I/O Ports
+        // 0xFF80-0xFFFE High RAM (HRAM)
         // 0xFFFF        Interrupt Enable Register
     }
 
@@ -91,9 +94,13 @@ impl<'a> Memory<'a> {
         let index = index as usize;
         match index {
             x if x < self.boot_rom.len() => self.boot_rom[x],
-            0x0...0x8000 => self.cartridge.get_u8(index),
+            0x0...0x7fff => self.cartridge.get_u8(index),
+            0xff00...0xff7f => 0,
             0xff80...0xfffe => self.hram[index - 0xff80],
-            x => panic!("Bad memory read at {}", x),
+            x => {
+                let location = index_to_location(x);
+                panic!("Bad read: {}", location);
+            }
         }
     }
 
@@ -123,19 +130,19 @@ impl<'a> Memory<'a> {
 
 pub fn index_to_location(index: usize) -> String {
     match index {
-        0x0000...0x3FFF => format!("ROM bank 0[{}]", index),
-        0x4000...0x7FFF => format!("ROM bank n[{}]", index),
-        0x8000...0x9FFF => format!("VRAM[{}]", index),
-        0xA000...0xBFFF => format!("RAM[{}]", index),
-        0xC000...0xCFFF => format!("WRAM0[{}]", index),
-        0xD000...0xDFFF => format!("WRAM1[{}]", index),
-        0xE000...0xFDFF => format!("ECHO[{}]", index),
-        0xFE00...0xFE9F => format!("OAM[{}]", index),
-        0xFEA0...0xFEFF => format!("Not usable[{}]", index),
-        0xFF00...0xFF7F => format!("IO[{}]", index),
-        0xFF80...0xFFFE => format!("HRAM[{}]", index),
+        0x0000...0x3FFF => format!("ROM bank 0[0x{:x}]", index),
+        0x4000...0x7FFF => format!("ROM bank n[0x{:x}]", index),
+        0x8000...0x9FFF => format!("VRAM[0x{:x}]", index),
+        0xA000...0xBFFF => format!("RAM[0x{:x}]", index),
+        0xC000...0xCFFF => format!("WRAM0[0x{:x}]", index),
+        0xD000...0xDFFF => format!("WRAM1[0x{:x}]", index),
+        0xE000...0xFDFF => format!("ECHO[0x{:x}]", index),
+        0xFE00...0xFE9F => format!("OAM[0x{:x}]", index),
+        0xFEA0...0xFEFF => format!("Not usable[0x{:x}]", index),
+        0xFF00...0xFF7F => format!("IO[0x{:x}]", index),
+        0xFF80...0xFFFE => format!("HRAM[0x{:x}]", index),
         0xFFFF => format!("InterruptEnableRegister"),
-        _ => panic!("Bad index {}", index),
+        _ => panic!("Bad index 0x{:x}", index),
     }
 }
 
