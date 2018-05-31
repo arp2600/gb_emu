@@ -47,6 +47,7 @@ impl<'a> Cpu<'a> {
                 self.dec_n(opcode);
             }
             0x22 => self.ldi_hl_a(),
+            0x03 | 0x13 | 0x23 | 0x33 => self.inc_nn(opcode),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -228,6 +229,30 @@ impl<'a> Cpu<'a> {
             }
             x => panic!("Bad opcode {}", x),
         };
+        self.registers.pc += 1;
+    }
+
+    fn inc_nn(&mut self, opcode: u8) {
+        match opcode {
+            0x03 => {
+                let source = self.registers.get_bc();
+                self.registers.set_bc(source + 1);
+            }
+            0x13 => {
+                let source = self.registers.get_de();
+                self.registers.set_de(source + 1);
+            }
+            0x23 => {
+                let source = self.registers.get_hl();
+                self.registers.set_hl(source + 1);
+            }
+            0x33 => {
+                let source = self.registers.sp;
+                self.registers.sp = source + 1;
+            }
+            _ => panic!("Bad opcode {}", opcode),
+        };
+
         self.registers.pc += 1;
     }
 
