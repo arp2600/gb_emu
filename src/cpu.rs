@@ -187,7 +187,9 @@ impl<'a> Cpu<'a> {
         };
 
         self.registers.clear_flags();
-        self.registers.set_flagz(value == 0);
+        // Setting flag z here doesn't match the behaviour
+        // of the reference emulator.
+        // self.registers.set_flagz(value == 0);
         self.registers.set_flagc((a & 0b1000_0000) != 0);
 
         self.registers.a = value;
