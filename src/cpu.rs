@@ -9,7 +9,11 @@ pub struct Cpu<'a> {
 
 impl<'a> Cpu<'a> {
     pub fn new(registers: &'a mut Registers, memory: &'a mut Memory<'a>) -> Cpu<'a> {
-        Cpu { registers, memory, instruction_counter: 0 }
+        Cpu {
+            registers,
+            memory,
+            instruction_counter: 0,
+        }
     }
 
     pub fn tick(&mut self) {
