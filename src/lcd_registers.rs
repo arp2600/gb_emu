@@ -52,6 +52,34 @@ impl LCDRegisters {
         }
     }
 
+    pub fn get(&self, index: usize) -> u8 {
+        match index {
+            0xff40 => self.lcdc,
+            0xff41 => self.stat,
+            0xff42 => self.sy,
+            0xff43 => self.sx,
+            0xff44 => self.ly,
+            0xff45 => self.lyc,
+            0xff46 => self.dma,
+            0xff47 => self.bgp,
+            0xff48 => self.obp0,
+            0xff49 => self.obp1,
+            0xff4a => self.wy,
+            0xff4b => self.wx,
+            0xff4f => self.vbk,
+            0xff51 => self.hdma1,
+            0xff52 => self.hdma2,
+            0xff53 => self.hdma3,
+            0xff54 => self.hdma4,
+            0xff55 => self.hdma5,
+            0xff68 => self.bcps,
+            0xff69 => self.bcpd,
+            0xff6a => self.ocps,
+            0xff6b => self.ocpd,
+            _ => panic!("0x{:x} is not an lcd register"),
+        }
+    }
+
     pub fn set(&mut self, index: usize, value: u8) {
         match index {
             0xff40 => self.lcdc = value,
