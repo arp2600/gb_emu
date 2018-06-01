@@ -1,11 +1,12 @@
+mod cartridge;
 mod cpu;
 mod lcd_registers;
 mod memory;
 mod opcode_table;
 mod opcodes;
 mod registers;
+use cartridge::Cartridge;
 use cpu::Cpu;
-use memory::Cartridge;
 use memory::Memory;
 use registers::Registers;
 use std::fs;
