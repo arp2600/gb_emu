@@ -5,6 +5,7 @@ pub struct Cpu<'a> {
     registers: &'a mut Registers,
     memory: &'a mut Memory<'a>,
     instruction_counter: usize,
+    cycles: u64,
 }
 
 impl<'a> Cpu<'a> {
@@ -13,6 +14,7 @@ impl<'a> Cpu<'a> {
             registers,
             memory,
             instruction_counter: 0,
+            cycles: 0,
         }
     }
 
@@ -124,11 +126,13 @@ impl<'a> Cpu<'a> {
         let v = self.memory.get_u8(0xff00 + n as u16);
         self.registers.a = v;
         self.registers.pc += 2;
+        self.cycles += 12;
     }
 
     fn jr_n(&mut self) {
         let n = self.load_imm_u8();
         self.registers.pc = signed_add_u16_u8(self.registers.pc + 2, n);
+        self.cycles += 8;
     }
 
     fn cp_n(&mut self, opcode: u8) {
@@ -153,6 +157,10 @@ impl<'a> Cpu<'a> {
         self.registers.set_flagc(a < n);
 
         self.registers.pc += 1;
+        match opcode {
+            0xfe | 0xbe => self.cycles += 8,
+            _ => self.cycles += 4,
+        }
     }
 
     fn ret(&mut self) {
@@ -160,12 +168,14 @@ impl<'a> Cpu<'a> {
         let addr = self.memory.get_u16(sp);
         self.registers.sp += 2;
         self.registers.pc = addr;
+        self.cycles += 8;
     }
 
     fn ldi_hl_a(&mut self) {
         let hl = self.registers.hli();
         self.memory.set_u8(hl, self.registers.a);
         self.registers.pc += 1;
+        self.cycles += 8;
     }
 
     fn dec_n(&mut self, opcode: u8) {
@@ -179,6 +189,10 @@ impl<'a> Cpu<'a> {
 
         self.set_dest_u8(reg_index, result);
         self.registers.pc += 1;
+        match opcode {
+            0x35 => self.cycles += 12,
+            _ => self.cycles += 4,
+        }
     }
 
     fn pop_nn(&mut self, opcode: u8) {
@@ -195,6 +209,7 @@ impl<'a> Cpu<'a> {
 
         self.registers.sp += 2;
         self.registers.pc += 1;
+        self.cycles += 12;
     }
 
     fn rla(&mut self) {
@@ -212,6 +227,7 @@ impl<'a> Cpu<'a> {
 
         self.registers.a = value;
         self.registers.pc += 1;
+        self.cycles += 4;
     }
 
     fn rl_n(&mut self, opcode: u8) {
@@ -228,6 +244,10 @@ impl<'a> Cpu<'a> {
 
         self.set_dest_u8(reg_index, value);
         self.registers.pc += 1;
+        match opcode {
+            0x16 => self.cycles += 16,
+            _ => self.cycles += 8,
+        }
     }
 
     fn push_nn(&mut self, opcode: u8) {
@@ -242,6 +262,7 @@ impl<'a> Cpu<'a> {
         self.memory.set_u16(self.registers.sp - 2, value);
         self.registers.sp -= 2;
         self.registers.pc += 1;
+        self.cycles += 16;
     }
 
     fn call_nn(&mut self) {
@@ -250,6 +271,7 @@ impl<'a> Cpu<'a> {
         self.registers.sp -= 2;
         self.memory.set_u16(self.registers.sp, self.registers.pc);
         self.registers.pc = addr;
+        self.cycles += 12;
     }
 
     fn ldh_n_a(&mut self) {
@@ -285,6 +307,11 @@ impl<'a> Cpu<'a> {
             x => panic!("Bad opcode {}", x),
         };
         self.registers.pc += 1;
+        match opcode {
+            0xea => self.cycles += 16,
+            0x02 | 0x12 | 0x77 => self.cycles += 8,
+            _ => self.cycles += 4,
+        };
     }
 
     fn inc_nn(&mut self, opcode: u8) {
@@ -309,6 +336,7 @@ impl<'a> Cpu<'a> {
         };
 
         self.registers.pc += 1;
+        self.cycles += 8;
     }
 
     fn inc_n(&mut self, opcode: u8) {
@@ -320,6 +348,10 @@ impl<'a> Cpu<'a> {
         self.registers.set_flagh((source & 0xf) + 1 > 0xf);
         self.set_dest_u8(reg_index, result);
         self.registers.pc += 1;
+        match opcode {
+            0x34 => self.cycles += 12,
+            _ => self.cycles += 4,
+        }
     }
 
     fn ld_a_n(&mut self, opcode: u8) {
@@ -348,12 +380,18 @@ impl<'a> Cpu<'a> {
             0xfa => self.registers.pc += 3,
             _ => self.registers.pc += 1,
         };
+        match opcode {
+            0xfa => self.cycles += 16,
+            0x0a | 0x1a | 0x3e | 0x7e => self.cycles += 8,
+            _ => self.cycles += 4,
+        }
     }
 
     fn ld_c_a(&mut self) {
         let addr = 0xff00 + self.registers.c as u16;
         self.memory.set_u8(addr, self.registers.a);
         self.registers.pc += 1;
+        self.cycles += 8;
     }
 
     fn ld_nn_n(&mut self, opcode: u8) {
@@ -361,6 +399,7 @@ impl<'a> Cpu<'a> {
         let value = self.load_imm_u8();
         self.set_dest_u8(dest_index, value);
         self.registers.pc += 2;
+        self.cycles += 8;
     }
 
     fn jr_cc_n(&mut self, opcode: u8) {
@@ -378,12 +417,14 @@ impl<'a> Cpu<'a> {
         } else {
             self.registers.pc += 2;
         }
+        self.cycles += 8;
     }
 
     fn ldd_hl_a(&mut self) {
         let hl = self.registers.hld();
         self.memory.set_u8(hl, self.registers.a);
         self.registers.pc += 1;
+        self.cycles += 8;
     }
 
     fn xor(&mut self, opcode: u8) {
@@ -395,6 +436,10 @@ impl<'a> Cpu<'a> {
         let flagz = self.registers.a == 0;
         self.registers.set_flagz(flagz);
         self.registers.pc += 1;
+        match opcode {
+            0xae | 0xee => self.cycles += 8,
+            _ => self.cycles += 4,
+        }
     }
 
     fn ld_n_nn(&mut self, opcode: u8) {
@@ -408,6 +453,7 @@ impl<'a> Cpu<'a> {
             _ => panic!("Bad register {}", reg_index),
         }
         self.registers.pc += 3;
+        self.cycles += 12;
     }
 
     fn bit_b_r(&mut self, opcode: u8) {
@@ -422,6 +468,10 @@ impl<'a> Cpu<'a> {
         self.registers.set_flagz(t == 0);
 
         self.registers.pc += 1;
+        match opcode {
+            0x46 => self.cycles += 16,
+            _ => self.cycles += 8,
+        }
     }
 }
 
