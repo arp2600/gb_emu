@@ -3,33 +3,35 @@ use super::registers::Registers;
 
 pub struct Cpu<'a> {
     registers: &'a mut Registers,
-    memory: &'a mut Memory<'a>,
     instruction_counter: usize,
     cycles: u64,
 }
 
 impl<'a> Cpu<'a> {
-    pub fn new(registers: &'a mut Registers, memory: &'a mut Memory<'a>) -> Cpu<'a> {
+    pub fn new(registers: &'a mut Registers) -> Cpu<'a> {
         Cpu {
             registers,
-            memory,
             instruction_counter: 0,
             cycles: 0,
         }
     }
 
-    pub fn tick(&mut self) {
+    pub fn get_cycles(&mut self) -> u64 {
+        self.cycles
+    }
+
+    pub fn tick(&mut self, memory: &mut Memory) {
         self.instruction_counter += 1;
-        let mnemonic = self.get_opcode_mnemonic();
-        self.fetch_and_execute();
+        let mnemonic = self.get_opcode_mnemonic(memory);
+        self.fetch_and_execute(memory);
         println!("{} {:?} {}", mnemonic, self.registers, self.cycles);
     }
 
-    fn get_opcode_mnemonic(&self) -> &'static str {
-        let opcode = self.memory.get_u8(self.registers.pc);
+    fn get_opcode_mnemonic(&self, memory: &Memory) -> &'static str {
+        let opcode = memory.get_u8(self.registers.pc);
 
         match opcode {
-            0xcb => self.get_cb_opcode_mnemonic(),
+            0xcb => self.get_cb_opcode_mnemonic(memory),
             0x01 | 0x11 | 0x21 | 0x31 => "LD",
             0xab...0xaf => "XOR",
             0x32 => "LDD",
@@ -61,8 +63,8 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn get_cb_opcode_mnemonic(&self) -> &'static str {
-        let opcode = self.memory.get_u8(self.registers.pc + 1);
+    fn get_cb_opcode_mnemonic(&self, memory: &Memory) -> &'static str {
+        let opcode = memory.get_u8(self.registers.pc + 1);
 
         match opcode {
             0x40...0x7f => "BIT",
@@ -71,58 +73,58 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn fetch_and_execute(&mut self) {
-        let opcode = self.memory.get_u8(self.registers.pc);
+    fn fetch_and_execute(&mut self, memory: &mut Memory) {
+        let opcode = memory.get_u8(self.registers.pc);
 
         match opcode {
-            0xcb => self.fetch_and_execute_cb(),
-            0x01 | 0x11 | 0x21 | 0x31 => self.ld_n_nn(opcode),
-            0xab...0xaf => self.xor(opcode),
-            0x32 => self.ldd_hl_a(),
-            0x20 | 0x28 | 0x30 | 0x38 => self.jr_cc_n(opcode),
+            0xcb => self.fetch_and_execute_cb(memory),
+            0x01 | 0x11 | 0x21 | 0x31 => self.ld_n_nn(opcode, memory),
+            0xab...0xaf => self.xor(opcode, memory),
+            0x32 => self.ldd_hl_a(memory),
+            0x20 | 0x28 | 0x30 | 0x38 => self.jr_cc_n(opcode, memory),
             0x06 | 0x0e | 0x16 | 0x1e | 0x26 | 0x2e => {
-                self.ld_nn_n(opcode);
+                self.ld_nn_n(opcode, memory);
             }
             0x0a | 0x1a | 0x3e | 0x78...0x7f | 0xfa => {
-                self.ld_a_n(opcode);
+                self.ld_a_n(opcode, memory);
             }
-            0xe2 => self.ld_c_a(),
+            0xe2 => self.ld_c_a(memory),
             0x3c | 0x04 | 0x0c | 0x14 | 0x1c | 0x24 | 0x2c | 0x34 => {
-                self.inc_n(opcode);
+                self.inc_n(opcode, memory);
             }
             0x47 | 0x4F | 0x57 | 0x5F | 0x67 | 0x6F | 0x02 | 0x12 | 0x77 | 0xEA => {
-                self.ld_n_a(opcode);
+                self.ld_n_a(opcode, memory);
             }
-            0xe0 => self.ldh_n_a(),
-            0xcd => self.call_nn(),
-            0xf5 | 0xc5 | 0xd5 | 0xe5 => self.push_nn(opcode),
-            0xf1 | 0xc1 | 0xd1 | 0xe1 => self.pop_nn(opcode),
+            0xe0 => self.ldh_n_a(memory),
+            0xcd => self.call_nn(memory),
+            0xf5 | 0xc5 | 0xd5 | 0xe5 => self.push_nn(opcode, memory),
+            0xf1 | 0xc1 | 0xd1 | 0xe1 => self.pop_nn(opcode, memory),
             0x17 => self.rla(),
             0x3d | 0x05 | 0x0d | 0x15 | 0x1d | 0x25 | 0x2d | 0x35 => {
-                self.dec_n(opcode);
+                self.dec_n(opcode, memory);
             }
-            0x22 => self.ldi_hl_a(),
+            0x22 => self.ldi_hl_a(memory),
             0x03 | 0x13 | 0x23 | 0x33 => self.inc_nn(opcode),
-            0xc9 => self.ret(),
-            0xb8...0xbf | 0xfe => self.cp_n(opcode),
-            0x18 => self.jr_n(),
-            0xf0 => self.ldh_a_n(),
+            0xc9 => self.ret(memory),
+            0xb8...0xbf | 0xfe => self.cp_n(opcode, memory),
+            0x18 => self.jr_n(memory),
+            0xf0 => self.ldh_a_n(memory),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
 
-    fn fetch_and_execute_cb(&mut self) {
+    fn fetch_and_execute_cb(&mut self, memory: &Memory) {
         self.registers.pc += 1;
-        let opcode = self.memory.get_u8(self.registers.pc);
+        let opcode = memory.get_u8(self.registers.pc);
 
         match opcode {
-            0x40...0x7f => self.bit_b_r(opcode),
-            0x10...0x17 => self.rl_n(opcode),
+            0x40...0x7f => self.bit_b_r(opcode, memory),
+            0x10...0x17 => self.rl_n(opcode, memory),
             _ => panic!("Instruction 0xcb{:02x} not implemented", opcode),
         }
     }
 
-    fn get_source_u8(&mut self, index: u8) -> u8 {
+    fn get_source_u8(&mut self, index: u8, memory: &Memory) -> u8 {
         match index {
             0 => self.registers.b,
             1 => self.registers.c,
@@ -132,7 +134,7 @@ impl<'a> Cpu<'a> {
             5 => self.registers.l,
             6 => {
                 let hl = self.registers.get_hl();
-                self.memory.get_u8(hl)
+                memory.get_u8(hl)
             }
             7 => self.registers.a,
             _ => panic!("Bad register {}", index),
@@ -149,47 +151,47 @@ impl<'a> Cpu<'a> {
             5 => self.registers.l = value,
             // 6 => {
             //     let hl = self.registers.get_hl();
-            //     self.memory.get_u8(hl)
+            //     memory.get_u8(hl)
             // }
             7 => self.registers.a = value,
             _ => panic!("Bad register {}", index),
         }
     }
 
-    fn load_imm_u8(&mut self) -> u8 {
-        self.memory.get_u8(self.registers.pc + 1)
+    fn load_imm_u8(&mut self, memory: &Memory) -> u8 {
+        memory.get_u8(self.registers.pc + 1)
     }
 
-    fn load_imm_u16(&mut self) -> u16 {
-        self.memory.get_u16(self.registers.pc + 1)
+    fn load_imm_u16(&mut self, memory: &Memory) -> u16 {
+        memory.get_u16(self.registers.pc + 1)
     }
 
     /************************************************************
                          Opcodes
     ************************************************************/
 
-    fn ldh_a_n(&mut self) {
-        let n = self.load_imm_u8();
-        let v = self.memory.get_u8(0xff00 + n as u16);
+    fn ldh_a_n(&mut self, memory: &Memory) {
+        let n = self.load_imm_u8(memory);
+        let v = memory.get_u8(0xff00 + n as u16);
         self.registers.a = v;
         self.registers.pc += 2;
         self.cycles += 12;
     }
 
-    fn jr_n(&mut self) {
-        let n = self.load_imm_u8();
+    fn jr_n(&mut self, memory: &Memory) {
+        let n = self.load_imm_u8(memory);
         self.registers.pc = signed_add_u16_u8(self.registers.pc + 2, n);
         self.cycles += 12;
     }
 
-    fn cp_n(&mut self, opcode: u8) {
+    fn cp_n(&mut self, opcode: u8, memory: &Memory) {
         let n = match opcode {
             0xb8...0xbf => {
                 let reg_index = opcode & 0b0000_0111;
-                self.get_source_u8(reg_index)
+                self.get_source_u8(reg_index, memory)
             }
             0xfe => {
-                let n = self.load_imm_u8();
+                let n = self.load_imm_u8(memory);
                 self.registers.pc += 1;
                 n
             }
@@ -210,24 +212,24 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn ret(&mut self) {
+    fn ret(&mut self, memory: &Memory) {
         let sp = self.registers.sp;
-        let addr = self.memory.get_u16(sp);
+        let addr = memory.get_u16(sp);
         self.registers.sp += 2;
         self.registers.pc = addr;
         self.cycles += 16;
     }
 
-    fn ldi_hl_a(&mut self) {
+    fn ldi_hl_a(&mut self, memory: &mut Memory) {
         let hl = self.registers.hli();
-        self.memory.set_u8(hl, self.registers.a);
+        memory.set_u8(hl, self.registers.a);
         self.registers.pc += 1;
         self.cycles += 8;
     }
 
-    fn dec_n(&mut self, opcode: u8) {
+    fn dec_n(&mut self, opcode: u8, memory: &Memory) {
         let reg_index = (opcode & 0b0011_1000) >> 3;
-        let source = self.get_source_u8(reg_index);
+        let source = self.get_source_u8(reg_index, memory);
         let result = source - 1;
 
         self.registers.set_flagz(result == 0);
@@ -242,9 +244,9 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn pop_nn(&mut self, opcode: u8) {
+    fn pop_nn(&mut self, opcode: u8, memory: &Memory) {
         let sp = self.registers.sp;
-        let value = self.memory.get_u16(sp);
+        let value = memory.get_u16(sp);
 
         match opcode {
             0xf1 => self.registers.set_af(value),
@@ -277,9 +279,9 @@ impl<'a> Cpu<'a> {
         self.cycles += 4;
     }
 
-    fn rl_n(&mut self, opcode: u8) {
+    fn rl_n(&mut self, opcode: u8, memory: &Memory) {
         let reg_index = opcode & 0b0000_0111;
-        let source = self.get_source_u8(reg_index);
+        let source = self.get_source_u8(reg_index, memory);
         let mut value = source << 1;
         if self.registers.flagc() {
             value += 1;
@@ -297,7 +299,7 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn push_nn(&mut self, opcode: u8) {
+    fn push_nn(&mut self, opcode: u8, memory: &mut Memory) {
         let value = match opcode {
             0xf5 => self.registers.get_af(),
             0xc5 => self.registers.get_bc(),
@@ -306,29 +308,29 @@ impl<'a> Cpu<'a> {
             _ => panic!("Bad opcode {}", opcode),
         };
 
-        self.memory.set_u16(self.registers.sp - 2, value);
+        memory.set_u16(self.registers.sp - 2, value);
         self.registers.sp -= 2;
         self.registers.pc += 1;
         self.cycles += 16;
     }
 
-    fn call_nn(&mut self) {
-        let addr = self.load_imm_u16();
+    fn call_nn(&mut self, memory: &mut Memory) {
+        let addr = self.load_imm_u16(memory);
         self.registers.pc += 3;
         self.registers.sp -= 2;
-        self.memory.set_u16(self.registers.sp, self.registers.pc);
+        memory.set_u16(self.registers.sp, self.registers.pc);
         self.registers.pc = addr;
         self.cycles += 24;
     }
 
-    fn ldh_n_a(&mut self) {
-        let addr = self.load_imm_u8() as u16 + 0xff00;
-        self.memory.set_u8(addr, self.registers.a);
+    fn ldh_n_a(&mut self, memory: &mut Memory) {
+        let addr = self.load_imm_u8(memory) as u16 + 0xff00;
+        memory.set_u8(addr, self.registers.a);
         self.registers.pc += 2;
         self.cycles += 12;
     }
 
-    fn ld_n_a(&mut self, opcode: u8) {
+    fn ld_n_a(&mut self, opcode: u8, memory: &mut Memory) {
         let value = self.registers.a;
         match opcode {
             0x7f | 0x47 | 0x4f | 0x57 | 0x5f | 0x67 | 0x6f => {
@@ -337,19 +339,19 @@ impl<'a> Cpu<'a> {
             }
             0x02 => {
                 let addr = self.registers.get_bc();
-                self.memory.set_u8(addr, value);
+                memory.set_u8(addr, value);
             }
             0x12 => {
                 let addr = self.registers.get_de();
-                self.memory.set_u8(addr, value);
+                memory.set_u8(addr, value);
             }
             0x77 => {
                 let addr = self.registers.get_hl();
-                self.memory.set_u8(addr, value);
+                memory.set_u8(addr, value);
             }
             0xea => {
-                let addr = self.load_imm_u16();
-                self.memory.set_u8(addr, value);
+                let addr = self.load_imm_u16(memory);
+                memory.set_u8(addr, value);
                 self.registers.pc += 2;
             }
             x => panic!("Bad opcode {}", x),
@@ -387,9 +389,9 @@ impl<'a> Cpu<'a> {
         self.cycles += 8;
     }
 
-    fn inc_n(&mut self, opcode: u8) {
+    fn inc_n(&mut self, opcode: u8, memory: &Memory) {
         let reg_index = (opcode & 0b11_1000) >> 3;
-        let source = self.get_source_u8(reg_index);
+        let source = self.get_source_u8(reg_index, memory);
         let result = source + 1;
         self.registers.set_flagz(result == 0);
         self.registers.set_flagn(false);
@@ -402,21 +404,21 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn ld_a_n(&mut self, opcode: u8) {
+    fn ld_a_n(&mut self, opcode: u8, memory: &Memory) {
         let n = match opcode {
-            0x78...0x7f => self.get_source_u8(opcode & 0b111),
-            0x3e => self.load_imm_u8(),
+            0x78...0x7f => self.get_source_u8(opcode & 0b111, memory),
+            0x3e => self.load_imm_u8(memory),
             0xfa => {
-                let v = self.load_imm_u16();
-                self.memory.get_u8(v)
+                let v = self.load_imm_u16(memory);
+                memory.get_u8(v)
             }
             0x0a => {
                 let bc = self.registers.get_bc();
-                self.memory.get_u8(bc)
+                memory.get_u8(bc)
             }
             0x1a => {
                 let de = self.registers.get_de();
-                self.memory.get_u8(de)
+                memory.get_u8(de)
             }
             x => panic!("Bad register {}", x),
         };
@@ -435,22 +437,22 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn ld_c_a(&mut self) {
+    fn ld_c_a(&mut self, memory: &mut Memory) {
         let addr = 0xff00 + self.registers.c as u16;
-        self.memory.set_u8(addr, self.registers.a);
+        memory.set_u8(addr, self.registers.a);
         self.registers.pc += 1;
         self.cycles += 8;
     }
 
-    fn ld_nn_n(&mut self, opcode: u8) {
+    fn ld_nn_n(&mut self, opcode: u8, memory: &Memory) {
         let dest_index = (opcode & 0b0011_1000) >> 3;
-        let value = self.load_imm_u8();
+        let value = self.load_imm_u8(memory);
         self.set_dest_u8(dest_index, value);
         self.registers.pc += 2;
         self.cycles += 8;
     }
 
-    fn jr_cc_n(&mut self, opcode: u8) {
+    fn jr_cc_n(&mut self, opcode: u8, memory: &Memory) {
         let condition = match (opcode & 0b11000) >> 3 {
             0 => !self.registers.flagz(),
             1 => self.registers.flagz(),
@@ -460,7 +462,7 @@ impl<'a> Cpu<'a> {
         };
 
         if condition {
-            let v = self.load_imm_u8();
+            let v = self.load_imm_u8(memory);
             self.registers.pc = signed_add_u16_u8(self.registers.pc + 2, v);
             self.cycles += 12;
         } else {
@@ -469,16 +471,16 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn ldd_hl_a(&mut self) {
+    fn ldd_hl_a(&mut self, memory: &mut Memory) {
         let hl = self.registers.hld();
-        self.memory.set_u8(hl, self.registers.a);
+        memory.set_u8(hl, self.registers.a);
         self.registers.pc += 1;
         self.cycles += 8;
     }
 
-    fn xor(&mut self, opcode: u8) {
+    fn xor(&mut self, opcode: u8, memory: &Memory) {
         let source_index = opcode & 0b111;
-        let x = self.get_source_u8(source_index);
+        let x = self.get_source_u8(source_index, memory);
 
         self.registers.a ^= x;
         self.registers.clear_flags();
@@ -491,9 +493,9 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn ld_n_nn(&mut self, opcode: u8) {
+    fn ld_n_nn(&mut self, opcode: u8, memory: &Memory) {
         let reg_index = (opcode & 0b0011_0000) >> 4;
-        let value = self.load_imm_u16();
+        let value = self.load_imm_u16(memory);
         match reg_index {
             0 => self.registers.set_bc(value),
             1 => self.registers.set_de(value),
@@ -505,9 +507,9 @@ impl<'a> Cpu<'a> {
         self.cycles += 12;
     }
 
-    fn bit_b_r(&mut self, opcode: u8) {
+    fn bit_b_r(&mut self, opcode: u8, memory: &Memory) {
         let source_index = opcode & 0b111;
-        let x = self.get_source_u8(source_index);
+        let x = self.get_source_u8(source_index, memory);
         let shift = (opcode & 0b111000) >> 3;
 
         let t = x & (1 << shift);

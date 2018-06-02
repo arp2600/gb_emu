@@ -36,9 +36,9 @@ impl<'a> Memory<'a> {
             _ => (), //println!("{} = {:#08b}", index_to_location(index), value),
         }
 
-        if index == 0xff40 {
-            self.print_tiles();
-        }
+        // if index == 0xff40 {
+        //     self.print_tiles();
+        // }
     }
 
     fn print_tiles(&self) {
