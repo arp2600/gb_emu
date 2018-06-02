@@ -107,7 +107,7 @@ impl LCDRegisters {
             _ => panic!("0x{:x} is not an lcd register"),
         }
 
-        self.trace_set(index, value);
+        // self.trace_set(index, value);
     }
 
     fn trace_set(&mut self, index: usize, value: u8) {

@@ -36,7 +36,7 @@ impl<'a> Cpu<'a> {
             0x20 | 0x28 | 0x30 | 0x38 => "JR",
             0x06 | 0x0e | 0x16 | 0x1e | 0x26 | 0x2e => "LD",
             0x0a | 0x1a | 0x3e | 0x78...0x7f | 0xfa => "LD",
-            0xe2 => "LD",
+            0xe2 => "LDH",
             0x3c | 0x04 | 0x0c | 0x14 | 0x1c | 0x24 | 0x2c | 0x34 => {
                 "INC"
             }
@@ -47,7 +47,7 @@ impl<'a> Cpu<'a> {
             0xcd => "CALL",
             0xf5 | 0xc5 | 0xd5 | 0xe5 => "PUSH",
             0xf1 | 0xc1 | 0xd1 | 0xe1 => "POP",
-            0x17 => "RLA",
+            0x17 => "RL",
             0x3d | 0x05 | 0x0d | 0x15 | 0x1d | 0x25 | 0x2d | 0x35 => {
                 "DEC"
             }
@@ -179,7 +179,7 @@ impl<'a> Cpu<'a> {
     fn jr_n(&mut self) {
         let n = self.load_imm_u8();
         self.registers.pc = signed_add_u16_u8(self.registers.pc + 2, n);
-        self.cycles += 8;
+        self.cycles += 12;
     }
 
     fn cp_n(&mut self, opcode: u8) {
@@ -215,7 +215,7 @@ impl<'a> Cpu<'a> {
         let addr = self.memory.get_u16(sp);
         self.registers.sp += 2;
         self.registers.pc = addr;
-        self.cycles += 8;
+        self.cycles += 16;
     }
 
     fn ldi_hl_a(&mut self) {
@@ -318,13 +318,14 @@ impl<'a> Cpu<'a> {
         self.registers.sp -= 2;
         self.memory.set_u16(self.registers.sp, self.registers.pc);
         self.registers.pc = addr;
-        self.cycles += 12;
+        self.cycles += 24;
     }
 
     fn ldh_n_a(&mut self) {
         let addr = self.load_imm_u8() as u16 + 0xff00;
         self.memory.set_u8(addr, self.registers.a);
         self.registers.pc += 2;
+        self.cycles += 12;
     }
 
     fn ld_n_a(&mut self, opcode: u8) {
@@ -461,10 +462,11 @@ impl<'a> Cpu<'a> {
         if condition {
             let v = self.load_imm_u8();
             self.registers.pc = signed_add_u16_u8(self.registers.pc + 2, v);
+            self.cycles += 12;
         } else {
             self.registers.pc += 2;
+            self.cycles += 8;
         }
-        self.cycles += 8;
     }
 
     fn ldd_hl_a(&mut self) {

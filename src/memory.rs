@@ -33,7 +33,7 @@ impl<'a> Memory<'a> {
     fn set_io(&mut self, index: usize, value: u8) {
         match index {
             0xff40...0xff6b => self.lcd_registers.set(index, value),
-            _ => println!("{} = {:#08b}", index_to_location(index), value),
+            _ => (), //println!("{} = {:#08b}", index_to_location(index), value),
         }
 
         if index == 0xff40 {
