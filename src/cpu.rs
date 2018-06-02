@@ -20,8 +20,55 @@ impl<'a> Cpu<'a> {
 
     pub fn tick(&mut self) {
         self.instruction_counter += 1;
+        let mnemonic = self.get_opcode_mnemonic();
         self.fetch_and_execute();
-        // println!("{:?}", self.registers);
+        println!("{} {:?} {}", mnemonic, self.registers, self.cycles);
+    }
+
+    fn get_opcode_mnemonic(&self) -> &'static str {
+        let opcode = self.memory.get_u8(self.registers.pc);
+
+        match opcode {
+            0xcb => self.get_cb_opcode_mnemonic(),
+            0x01 | 0x11 | 0x21 | 0x31 => "LD",
+            0xab...0xaf => "XOR",
+            0x32 => "LDD",
+            0x20 | 0x28 | 0x30 | 0x38 => "JR",
+            0x06 | 0x0e | 0x16 | 0x1e | 0x26 | 0x2e => "LD",
+            0x0a | 0x1a | 0x3e | 0x78...0x7f | 0xfa => "LD",
+            0xe2 => "LD",
+            0x3c | 0x04 | 0x0c | 0x14 | 0x1c | 0x24 | 0x2c | 0x34 => {
+                "INC"
+            }
+            0x47 | 0x4F | 0x57 | 0x5F | 0x67 | 0x6F | 0x02 | 0x12 | 0x77 | 0xEA => {
+                "LD"
+            }
+            0xe0 => "LDH",
+            0xcd => "CALL",
+            0xf5 | 0xc5 | 0xd5 | 0xe5 => "PUSH",
+            0xf1 | 0xc1 | 0xd1 | 0xe1 => "POP",
+            0x17 => "RLA",
+            0x3d | 0x05 | 0x0d | 0x15 | 0x1d | 0x25 | 0x2d | 0x35 => {
+                "DEC"
+            }
+            0x22 => "LDI",
+            0x03 | 0x13 | 0x23 | 0x33 => "INC",
+            0xc9 => "RET",
+            0xb8...0xbf | 0xfe => "CP",
+            0x18 => "JR",
+            0xf0 => "LDH",
+            _ => "__",
+        }
+    }
+
+    fn get_cb_opcode_mnemonic(&self) -> &'static str {
+        let opcode = self.memory.get_u8(self.registers.pc + 1);
+
+        match opcode {
+            0x40...0x7f => "BIT",
+            0x10...0x17 => "RL",
+            _ => "CB__",
+        }
     }
 
     fn fetch_and_execute(&mut self) {

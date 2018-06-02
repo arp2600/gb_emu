@@ -80,8 +80,8 @@ impl<'a> Memory<'a> {
 
         self.vram[vram_index] = value;
 
-        let location = index_to_location(index);
-        println!("{} = {:#010b}", location, value);
+        // let location = index_to_location(index);
+        // println!("{} = {:#010b}", location, value);
     }
 
     pub fn set_u8(&mut self, index: u16, value: u8) {
