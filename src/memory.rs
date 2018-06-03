@@ -11,6 +11,9 @@ const VRAM_START: usize = 0x8000;
 const VRAM_SIZE: usize = 8 * KILOBYTE;
 const VRAM_END: usize = VRAM_START + VRAM_SIZE - 1;
 
+const IO_START: usize = 0xff00;
+const IO_END: usize = 0xff7f;
+
 pub struct Memory<'a> {
     boot_rom: &'a mut [u8],
     cartridge: &'a mut Cartridge,
@@ -39,6 +42,13 @@ impl<'a> Memory<'a> {
         // if index == 0xff40 {
         //     self.print_tiles();
         // }
+    }
+
+    fn get_io(&self, index: usize) -> u8 {
+        match index {
+            0xff40...0xff6b => self.lcd_registers.get(index),
+            _ => 0,
+        }
     }
 
     fn print_tiles(&self) {
@@ -89,7 +99,7 @@ impl<'a> Memory<'a> {
         match index {
             0x0...0x7FFF => panic!("Cannot write to {}", index_to_location(index)),
             VRAM_START...VRAM_END => self.set_vram(index, value),
-            0xff00...0xff7f => self.set_io(index, value),
+            IO_START...IO_END => self.set_io(index, value),
             HRAM_START...HRAM_END => self.hram[index - HRAM_START] = value,
             x => {
                 let location = index_to_location(x);
@@ -116,7 +126,7 @@ impl<'a> Memory<'a> {
         match index {
             x if x < self.boot_rom.len() => self.boot_rom[x],
             0x0...0x7fff => self.cartridge.get_u8(index),
-            0xff00...0xff7f => 0,
+            IO_START...IO_END => self.get_io(index),
             HRAM_START...HRAM_END => self.hram[index - HRAM_START],
             x => {
                 let location = index_to_location(x);

@@ -17,12 +17,12 @@ fn get_boot_rom() -> Vec<u8> {
 
 struct LCD {
     enabled: bool,
-    draw_time: u64,
+    frame_start_time: u64,
 }
 
 impl LCD {
     fn new() -> LCD {
-        LCD { enabled: false, draw_time: 0 }
+        LCD { enabled: false, frame_start_time: 0 }
     }
 
     fn tick(&mut self, cpu_cycles: u64, memory: &mut Memory) {
@@ -30,11 +30,22 @@ impl LCD {
             self.run(cpu_cycles, memory);
         } else {
             // check if enabled now
+            if memory.get_u8(0xff40) & 0b1000_0000 != 0 {
+                self.enabled = true;
+                self.frame_start_time = cpu_cycles;
+            }
         }
     }
 
     fn run(&mut self, cpu_cycles: u64, memory: &mut Memory) {
-        // do stuff
+        let run_time = cpu_cycles - self.frame_start_time;
+        if run_time < 15800 {
+            // write to sy
+            memory.set_u8(0xff44, 0);
+        } else {
+            let ly = (run_time - 15800) / 480 + 1;
+            memory.set_u8(0xff44, ly as u8);
+        }
     }
 }
 
