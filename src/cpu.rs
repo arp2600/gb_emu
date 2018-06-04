@@ -59,6 +59,7 @@ impl<'a> Cpu<'a> {
             0xb8...0xbf | 0xfe => "CP",
             0x18 => "JR",
             0xf0 => "LDH",
+            0x90...0x97 | 0xd6 => "SUB",
             _ => "__",
         }
     }
@@ -109,6 +110,7 @@ impl<'a> Cpu<'a> {
             0xb8...0xbf | 0xfe => self.cp_n(opcode, memory),
             0x18 => self.jr_n(memory),
             0xf0 => self.ldh_a_n(memory),
+            0x90...0x97 | 0xd6 => self.sub_n(opcode, memory),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -169,6 +171,35 @@ impl<'a> Cpu<'a> {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn sub_n(&mut self, opcode: u8, memory: &Memory) {
+        let n = match opcode {
+            0x90...0x97 => {
+                let reg_index = opcode & 0b0000_0111;
+                self.get_source_u8(reg_index, memory)
+            }
+            0xd6 => {
+                let n = self.load_imm_u8(memory);
+                self.registers.pc += 1;
+                n
+            }
+            _ => panic!("Bad opcode {}", opcode),
+        };
+
+        let a = self.registers.a;
+        self.registers.a = a - n;
+
+        self.registers.set_flagz(a <= n);
+        self.registers.set_flagn(true);
+        self.registers.set_flagh(a & 0xf < n & 0xf);
+        self.registers.set_flagc(a < n);
+
+        self.registers.pc += 1;
+        match opcode {
+            0x96 | 0xd6 => self.cycles += 8,
+            _ => self.cycles += 4,
+        }
+    }
 
     fn ldh_a_n(&mut self, memory: &Memory) {
         let n = self.load_imm_u8(memory);
