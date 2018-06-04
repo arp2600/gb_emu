@@ -76,7 +76,7 @@ impl LCDRegisters {
             0xff69 => self.bcpd,
             0xff6a => self.ocps,
             0xff6b => self.ocpd,
-            _ => panic!("0x{:x} is not an lcd register"),
+            _ => panic!("{:#x} is not an lcd register", index),
         }
     }
 
@@ -104,7 +104,7 @@ impl LCDRegisters {
             0xff69 => self.bcpd = value,
             0xff6a => self.ocps = value,
             0xff6b => self.ocpd = value,
-            _ => panic!("0x{:x} is not an lcd register"),
+            _ => panic!("{:#x} is not an lcd register", index),
         }
 
         // self.trace_set(index, value);
@@ -140,6 +140,6 @@ fn index_to_reg_name(index: usize) -> &'static str {
         0xff69 => "BCPD",
         0xff6a => "OCPS",
         0xff6b => "OCPD",
-        _ => panic!("0x{:x} is not an lcd register"),
+        _ => panic!("{:#x} is not an lcd register", index),
     }
 }
