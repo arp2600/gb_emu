@@ -35,7 +35,9 @@ impl<'a> Memory<'a> {
 
     fn set_io(&mut self, index: usize, value: u8) {
         match index {
-            0xff40...0xff4b | 0xff4f | 0xff51...0xff55 | 0xff68...0xff6b => self.lcd_registers.set(index, value),
+            0xff40...0xff4b | 0xff4f | 0xff51...0xff55 | 0xff68...0xff6b => {
+                self.lcd_registers.set(index, value)
+            }
             _ => (), //println!("{} = {:#08b}", index_to_location(index), value),
         }
 
@@ -66,7 +68,7 @@ impl<'a> Memory<'a> {
     }
 
     fn print_tile(&self, addr: usize) {
-        let tile = &self.vram[addr..addr+16];
+        let tile = &self.vram[addr..addr + 16];
         if tile.iter().any(|&x| x > 0) {
             println!("tile at {} has data", addr / 16);
             println!("------------------");
