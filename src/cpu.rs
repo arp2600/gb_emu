@@ -261,7 +261,7 @@ impl<'a> Cpu<'a> {
     fn dec_n(&mut self, opcode: u8, memory: &Memory) {
         let reg_index = (opcode & 0b0011_1000) >> 3;
         let source = self.get_source_u8(reg_index, memory);
-        let result = source - 1;
+        let result = source.wrapping_sub(1);
 
         self.registers.set_flagz(result == 0);
         self.registers.set_flagn(true);
