@@ -38,6 +38,7 @@ impl<'a> Memory<'a> {
             0xff40...0xff4b | 0xff4f | 0xff51...0xff55 | 0xff68...0xff6b => {
                 self.lcd_registers.set(index, value)
             }
+            0xff50 => panic!("Disable boot rom"),
             _ => (), //println!("{} = {:#08b}", index_to_location(index), value),
         }
 
@@ -141,6 +142,7 @@ impl<'a> Memory<'a> {
         let index = index as usize;
         match index {
             x if x < self.boot_rom.len() => get_u16(&self.boot_rom, index),
+            0x0...0x7fff => self.cartridge.get_u16(index),
             HRAM_START...HRAM_END => get_u16(&self.hram, index - HRAM_START),
             x => {
                 let location = index_to_location(x);

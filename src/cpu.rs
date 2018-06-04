@@ -31,6 +31,7 @@ impl<'a> Cpu<'a> {
         let opcode = memory.get_u8(self.registers.pc);
 
         match opcode {
+            0x00 => "NOP",
             0xcb => self.get_cb_opcode_mnemonic(memory),
             0x01 | 0x11 | 0x21 | 0x31 => "LD",
             0xab...0xaf => "XOR",
@@ -55,6 +56,7 @@ impl<'a> Cpu<'a> {
             0xf0 => "LDH",
             0x90...0x97 | 0xd6 => "SUB",
             0x80...0x87 | 0xc6 => "ADD",
+            0xc3 => "JP",
             _ => "__",
         }
     }
@@ -73,6 +75,7 @@ impl<'a> Cpu<'a> {
         let opcode = memory.get_u8(self.registers.pc);
 
         match opcode {
+            0x00 => self.nop(),
             0xcb => self.fetch_and_execute_cb(memory),
             0x01 | 0x11 | 0x21 | 0x31 => self.ld_n_nn(opcode, memory),
             0xab...0xaf => self.xor(opcode, memory),
@@ -107,6 +110,7 @@ impl<'a> Cpu<'a> {
             0xf0 => self.ldh_a_n(memory),
             0x90...0x97 | 0xd6 => self.sub_n(opcode, memory),
             0x80...0x87 | 0xc6 => self.add_a_n(opcode, memory),
+            0xc3 => self.jp_nn(memory),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -167,6 +171,18 @@ impl<'a> Cpu<'a> {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn jp_nn(&mut self, memory: &Memory) {
+        let nn = self.load_imm_u16(memory);
+        self.registers.pc = nn;
+        self.cycles += 12;
+    }
+
+    fn nop(&mut self) {
+        self.registers.pc += 1;
+        self.cycles += 4;
+    }
+
     fn add_a_n(&mut self, opcode: u8, memory: &Memory) {
         let n = match opcode {
             0x80...0x87 => {

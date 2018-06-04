@@ -35,4 +35,10 @@ impl Cartridge {
             _ => panic!("Bad read at {}", index),
         }
     }
+
+    pub fn get_u16(&self, index: usize) -> u16 {
+        let low = self.get_u8(index) as u16;
+        let high = self.get_u8(index + 1) as u16;
+        (high << 8) | low
+    }
 }
