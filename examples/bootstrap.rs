@@ -1,25 +1,12 @@
 extern crate gb_emu;
-use gb_emu::cartridge::Cartridge;
-use gb_emu::cpu::Cpu;
-use gb_emu::lcd::LCD;
-use gb_emu::memory::Memory;
-use gb_emu::registers::Registers;
+use gb_emu::Emulator;
 use std::fs;
 
-fn get_boot_rom() -> Vec<u8> {
-    fs::read("../ROMs/dmg_rom.gb").unwrap()
-}
-
 fn main() {
-    let mut boot_rom = get_boot_rom();
-    let mut registers = Registers::new();
-    let mut cartridge = Cartridge::from_file("../ROMs/tetris.gb");
-    let mut mem = Memory::new(&mut boot_rom, &mut cartridge);
-    let mut cpu = Cpu::new(&mut registers);
-    let mut lcd = LCD::new();
-
+    let boot_rom = "../ROMs/dmg_rom.gb";
+    let cartridge_rom = "../ROMs/tetris.gb";
+    let mut emulator = Emulator::new(&boot_rom, &cartridge_rom);
     loop {
-        lcd.tick(&mut mem, cpu.get_cycles());
-        cpu.tick(&mut mem);
+        emulator.tick();
     }
 }

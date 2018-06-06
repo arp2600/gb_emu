@@ -14,16 +14,16 @@ const VRAM_END: usize = VRAM_START + VRAM_SIZE - 1;
 const IO_START: usize = 0xff00;
 const IO_END: usize = 0xff7f;
 
-pub struct Memory<'a> {
-    boot_rom: &'a mut [u8],
-    cartridge: &'a mut Cartridge,
+pub struct Memory {
+    boot_rom: Vec<u8>,
+    cartridge: Cartridge,
     hram: [u8; HRAM_SIZE],
     lcd_registers: LCDRegisters,
     vram: [u8; VRAM_SIZE],
 }
 
-impl<'a> Memory<'a> {
-    pub fn new(boot_rom: &'a mut [u8], cartridge: &'a mut Cartridge) -> Memory<'a> {
+impl Memory {
+    pub fn new(boot_rom: Vec<u8>, cartridge: Cartridge) -> Memory {
         Memory {
             boot_rom,
             cartridge,

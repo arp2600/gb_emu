@@ -1,16 +1,16 @@
 use super::memory::Memory;
 use super::registers::Registers;
 
-pub struct Cpu<'a> {
-    registers: &'a mut Registers,
+pub struct Cpu {
+    registers: Registers,
     instruction_counter: usize,
     cycles: u64,
 }
 
-impl<'a> Cpu<'a> {
-    pub fn new(registers: &'a mut Registers) -> Cpu<'a> {
+impl Cpu {
+    pub fn new() -> Cpu {
         Cpu {
-            registers,
+            registers: Registers::new(),
             instruction_counter: 0,
             cycles: 0,
         }
