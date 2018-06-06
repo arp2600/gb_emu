@@ -35,79 +35,74 @@ impl Memory {
 
     fn set_io(&mut self, index: usize, value: u8) {
         match index {
-            0xff40...0xff4b | 0xff4f | 0xff51...0xff55 | 0xff68...0xff6b => {
-                self.lcd_registers.set(index, value)
-            }
+            0xff40 => self.lcd_registers.lcdc = value,
+            0xff41 => self.lcd_registers.stat = value,
+            0xff42 => self.lcd_registers.sy = value,
+            0xff43 => self.lcd_registers.sx = value,
+            0xff44 => self.lcd_registers.ly = value,
+            0xff45 => self.lcd_registers.lyc = value,
+            0xff46 => self.lcd_registers.dma = value,
+            0xff47 => self.lcd_registers.bgp = value,
+            0xff48 => self.lcd_registers.obp0 = value,
+            0xff49 => self.lcd_registers.obp1 = value,
             0xff50 => panic!("Disable boot rom"),
-            _ => (), //println!("{} = {:#08b}", index_to_location(index), value),
+            0xff4a => self.lcd_registers.wy = value,
+            0xff4b => self.lcd_registers.wx = value,
+            0xff4f => self.lcd_registers.vbk = value,
+            0xff51 => self.lcd_registers.hdma1 = value,
+            0xff52 => self.lcd_registers.hdma2 = value,
+            0xff53 => self.lcd_registers.hdma3 = value,
+            0xff54 => self.lcd_registers.hdma4 = value,
+            0xff55 => self.lcd_registers.hdma5 = value,
+            0xff68 => self.lcd_registers.bcps = value,
+            0xff69 => self.lcd_registers.bcpd = value,
+            0xff6a => self.lcd_registers.ocps = value,
+            0xff6b => self.lcd_registers.ocpd = value,
+            _ => (),
         }
-
-        // if index == 0xff40 {
-        //     self.print_tiles();
-        // }
     }
 
     fn get_io(&self, index: usize) -> u8 {
         match index {
-            0xff40...0xff6b => self.lcd_registers.get(index),
+            0xff40 => self.lcd_registers.lcdc,
+            0xff41 => self.lcd_registers.stat,
+            0xff42 => self.lcd_registers.sy,
+            0xff43 => self.lcd_registers.sx,
+            0xff44 => self.lcd_registers.ly,
+            0xff45 => self.lcd_registers.lyc,
+            0xff46 => self.lcd_registers.dma,
+            0xff47 => self.lcd_registers.bgp,
+            0xff48 => self.lcd_registers.obp0,
+            0xff49 => self.lcd_registers.obp1,
+            0xff4a => self.lcd_registers.wy,
+            0xff4b => self.lcd_registers.wx,
+            0xff4f => self.lcd_registers.vbk,
+            0xff51 => self.lcd_registers.hdma1,
+            0xff52 => self.lcd_registers.hdma2,
+            0xff53 => self.lcd_registers.hdma3,
+            0xff54 => self.lcd_registers.hdma4,
+            0xff55 => self.lcd_registers.hdma5,
+            0xff68 => self.lcd_registers.bcps,
+            0xff69 => self.lcd_registers.bcpd,
+            0xff6a => self.lcd_registers.ocps,
+            0xff6b => self.lcd_registers.ocpd,
             _ => 0,
-        }
-    }
-
-    fn print_tiles(&self) {
-        let lcdc = self.lcd_registers.get(0xff40);
-        let start = if lcdc & 0b0001_0000 != 0 {
-            0x8000 - VRAM_START
-        } else {
-            0x8800 - VRAM_START
-        };
-
-        for i in 0..=255 {
-            let tile_address = start + i * 16;
-            self.print_tile(tile_address);
-        }
-    }
-
-    fn print_tile(&self, addr: usize) {
-        let tile = &self.vram[addr..addr + 16];
-        if tile.iter().any(|&x| x > 0) {
-            println!("tile at {} has data", addr / 16);
-            println!("------------------");
-            for bytes in tile.chunks(2) {
-                print!("|");
-                for i in 0..8 {
-                    let i = 7 - i;
-                    let a = (bytes[0] >> i) & 1;
-                    let b = ((bytes[1] >> i) & 1) << 1;
-                    print!("{}", if a | b > 0 { "XX" } else { "  " });
-                }
-                println!("|");
-            }
-            println!("------------------");
         }
     }
 
     fn set_vram(&mut self, index: usize, value: u8) {
         let vram_index = index - VRAM_START;
-        let tile_index = vram_index / 16;
-
         self.vram[vram_index] = value;
-
-        // let location = index_to_location(index);
-        // println!("{} = {:#010b}", location, value);
     }
 
     pub fn set_u8(&mut self, index: u16, value: u8) {
         let index = index as usize;
         match index {
-            0x0...0x7FFF => panic!("Cannot write to {}", index_to_location(index)),
+            0x0...0x7FFF => bad_write_panic(index),
             VRAM_START...VRAM_END => self.set_vram(index, value),
             IO_START...IO_END => self.set_io(index, value),
             HRAM_START...HRAM_END => self.hram[index - HRAM_START] = value,
-            x => {
-                let location = index_to_location(x);
-                panic!("Bad read: {}", location);
-            }
+            x => bad_write_panic(x),
         }
         //
         // 0x0000-0x3FFF 16KB ROM Bank 00
@@ -157,10 +152,7 @@ impl Memory {
             HRAM_START...HRAM_END => {
                 set_u16(&mut self.hram, index - HRAM_START, value);
             }
-            x => {
-                let location = index_to_location(x);
-                panic!("Bad write: {}", location);
-            }
+            x => bad_write_panic(x),
         }
     }
 }
@@ -194,4 +186,8 @@ fn set_u16(mem: &mut [u8], index: usize, value: u16) {
     let low = value & 0xff;
     mem[index + 1] = high as u8;
     mem[index] = low as u8;
+}
+
+fn bad_write_panic(index: usize) {
+    panic!("Cannot write to {}", index_to_location(index));
 }
