@@ -1,16 +1,9 @@
-mod cartridge;
-mod cpu;
-mod lcd;
-mod lcd_registers;
-mod memory;
-mod opcode_table;
-mod opcodes;
-mod registers;
-use cartridge::Cartridge;
-use cpu::Cpu;
-use lcd::LCD;
-use memory::Memory;
-use registers::Registers;
+extern crate gb_emu;
+use gb_emu::cartridge::Cartridge;
+use gb_emu::cpu::Cpu;
+use gb_emu::lcd::LCD;
+use gb_emu::memory::Memory;
+use gb_emu::registers::Registers;
 use std::fs;
 
 fn get_boot_rom() -> Vec<u8> {
