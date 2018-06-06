@@ -22,9 +22,14 @@ impl LCD {
 
         if self.enabled {
             let frame_time = (clock - self.frame_start) % (456 * 154);
-            let ly = (frame_time / 456) as i32;
+            let ly = (frame_time / 456) as u8;
             assert!(ly < 154);
-            memory.set_u8(0xff44, ly as u8)
+            memory.set_u8(0xff44, ly);
+            let lyc = memory.get_u8(0xff45);
+            if ly == lyc {
+                let stat = memory.get_u8(0xff41);
+                memory.set_u8(0xff41, 0b10);
+            }
         }
     }
 }
