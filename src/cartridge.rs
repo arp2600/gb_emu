@@ -25,7 +25,7 @@ impl Cartridge {
 
         Cartridge {
             zero_bank: full_rom,
-            other_banks: other_banks,
+            other_banks,
         }
     }
 
@@ -37,8 +37,8 @@ impl Cartridge {
     }
 
     pub fn get_u16(&self, index: usize) -> u16 {
-        let low = self.get_u8(index) as u16;
-        let high = self.get_u8(index + 1) as u16;
+        let low = u16::from(self.get_u8(index));
+        let high = u16::from(self.get_u8(index + 1));
         (high << 8) | low
     }
 }

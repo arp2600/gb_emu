@@ -178,14 +178,14 @@ pub fn index_to_location(index: usize) -> String {
         0xFEA0...0xFEFF => format!("Not usable[0x{:x}]", index),
         0xFF00...0xFF7F => format!("IO[0x{:x}]", index),
         HRAM_START...HRAM_END => format!("HRAM[0x{:x}]", index),
-        0xFFFF => format!("InterruptEnableRegister"),
+        0xFFFF => String::from("InterruptEnableRegister"),
         _ => panic!("Bad index 0x{:x}", index),
     }
 }
 
 fn get_u16(mem: &[u8], index: usize) -> u16 {
-    let high = mem[index + 1] as u16;
-    let low = mem[index] as u16;
+    let high = u16::from(mem[index + 1]);
+    let low = u16::from(mem[index]);
     (high << 8) | low
 }
 

@@ -204,7 +204,7 @@ impl<'a> Cpu<'a> {
         self.registers.set_flagz(result == 0);
         self.registers.set_flagn(false);
         self.registers.set_flagh((a & 0xf) + (n & 0xf) > 0xf);
-        self.registers.set_flagc(a as u16 + n as u16 > 255);
+        self.registers.set_flagc(u16::from(a) + u16::from(n) > 255);
 
         self.registers.pc += 1;
         match opcode {
@@ -244,7 +244,7 @@ impl<'a> Cpu<'a> {
 
     fn ldh_a_n(&mut self, memory: &Memory) {
         let n = self.load_imm_u8(memory);
-        let v = memory.get_u8(0xff00 + n as u16);
+        let v = memory.get_u8(0xff00 + u16::from(n));
         self.registers.a = v;
         self.registers.pc += 2;
         self.cycles += 12;
@@ -306,7 +306,7 @@ impl<'a> Cpu<'a> {
 
         self.registers.set_flagz(result == 0);
         self.registers.set_flagn(true);
-        self.registers.set_flagh(source & 0xf == 0);
+        self.registers.set_flagh(source.trailing_zeros() >= 4);
 
         self.set_dest_u8(reg_index, result);
         self.registers.pc += 1;
@@ -396,7 +396,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn ldh_n_a(&mut self, memory: &mut Memory) {
-        let addr = self.load_imm_u8(memory) as u16 + 0xff00;
+        let addr = u16::from(self.load_imm_u8(memory)) + 0xff00;
         memory.set_u8(addr, self.registers.a);
         self.registers.pc += 2;
         self.cycles += 12;
@@ -510,7 +510,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn ld_c_a(&mut self, memory: &mut Memory) {
-        let addr = 0xff00 + self.registers.c as u16;
+        let addr = 0xff00 + u16::from(self.registers.c);
         memory.set_u8(addr, self.registers.a);
         self.registers.pc += 1;
         self.cycles += 8;
@@ -582,7 +582,7 @@ impl<'a> Cpu<'a> {
     fn bit_b_r(&mut self, opcode: u8, memory: &Memory) {
         let source_index = opcode & 0b111;
         let x = self.get_source_u8(source_index, memory);
-        let shift = (opcode & 0b111000) >> 3;
+        let shift = (opcode & 0b11_1000) >> 3;
 
         let t = x & (1 << shift);
 
@@ -601,8 +601,8 @@ impl<'a> Cpu<'a> {
 // Add a 'signed' u8 to an unsigned u16
 fn signed_add_u16_u8(lhs: u16, rhs: u8) -> u16 {
     if rhs & 0b1000_0000 != 0 {
-        lhs - (!rhs + 1) as u16
+        lhs - u16::from(!rhs + 1)
     } else {
-        lhs + rhs as u16
+        lhs + u16::from(rhs)
     }
 }

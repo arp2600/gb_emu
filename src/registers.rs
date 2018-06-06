@@ -1,7 +1,7 @@
 macro_rules! create_get_set {
     ( $get_name: ident, $set_name:ident , $high:ident , $low:ident ) => {
         pub fn $get_name (&self) -> u16 {
-            (self.$high as u16) << 8 | (self.$low as u16)
+            u16::from(self.$high) << 8 | u16::from(self.$low)
         }
 
         pub fn $set_name (&mut self, value: u16) {
