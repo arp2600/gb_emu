@@ -18,7 +18,7 @@ const WRAM_START: usize = 0xc000;
 const WRAM_SIZE: usize = 8 * KILOBYTE;
 const WRAM_END: usize = WRAM_START + WRAM_SIZE - 1;
 const WRAM_ECHO_START: usize = 0xe000;
-const WRAM_ECHO_END: usize = WRAM_ECHO_START + WRAM_SIZE - 1;
+const WRAM_ECHO_END: usize = 0xfdff;
 
 const OAM_START: usize = 0xfe00;
 const OAM_END: usize = 0xfe9f;
