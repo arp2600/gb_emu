@@ -16,8 +16,21 @@ impl Cpu {
         }
     }
 
+    pub fn skip_boot_rom(&mut self) {
+        self.registers.set_af(0x01b0);
+        self.registers.set_bc(0x0013);
+        self.registers.set_de(0x00d8);
+        self.registers.set_hl(0x014d);
+        self.registers.sp = 0xfffe;
+        self.registers.pc = 0x0100;
+    }
+
     pub fn get_cycles(&mut self) -> u64 {
         self.cycles
+    }
+
+    pub fn get_registers(&self) -> &Registers {
+        &self.registers
     }
 
     pub fn tick(&mut self, memory: &mut Memory) {
@@ -25,7 +38,7 @@ impl Cpu {
         self.instruction_counter += 1;
         let mnemonic = self.get_opcode_mnemonic(memory);
         self.fetch_and_execute(memory);
-        println!("{} {:?} {}", mnemonic, self.registers, self.cycles - cycles);
+        // println!("{} {:?} {}", mnemonic, self.registers, self.cycles - cycles);
     }
 
     fn get_opcode_mnemonic(&self, memory: &Memory) -> &'static str {

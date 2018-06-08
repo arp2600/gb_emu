@@ -4,6 +4,7 @@ use memory_values::*;
 
 pub struct Memory {
     boot_rom: Vec<u8>,
+    boot_rom_enabled: bool,
     cartridge: Cartridge,
     vram: [u8; VRAM_SIZE],
     wram: [u8; WRAM_SIZE],
@@ -14,9 +15,16 @@ pub struct Memory {
 }
 
 impl Memory {
-    pub fn new(boot_rom: Vec<u8>, cartridge: Cartridge) -> Memory {
+    pub fn new(boot_rom: Option<Vec<u8>>, cartridge: Cartridge) -> Memory {
+        let boot_rom = match boot_rom {
+            Some(x) => x,
+            None => Vec::new(),
+        };
+        let boot_rom_enabled = !boot_rom.is_empty();
+
         Memory {
             boot_rom,
+            boot_rom_enabled,
             cartridge,
             hram: [0; HRAM_SIZE],
             lcd_registers: LCDRegisters::new(),
@@ -25,6 +33,44 @@ impl Memory {
             oam: [0; OAM_SIZE],
             interrupt_enable_register: 0,
         }
+    }
+
+    pub fn skip_boot_rom(&mut self) {
+        self.set_u8(0xff05, 0x00);
+        self.set_u8(0xff06, 0x00);
+        self.set_u8(0xff07, 0x00);
+        self.set_u8(0xff10, 0x80);
+        self.set_u8(0xff11, 0xbf);
+        self.set_u8(0xff12, 0xf3);
+        self.set_u8(0xff14, 0xbf);
+        self.set_u8(0xff16, 0x3f);
+        self.set_u8(0xff17, 0x00);
+        self.set_u8(0xff19, 0xbf);
+        self.set_u8(0xff1a, 0x7f);
+        self.set_u8(0xff1b, 0xff);
+        self.set_u8(0xff1c, 0x9f);
+        self.set_u8(0xff1e, 0xbf);
+        self.set_u8(0xff20, 0xff);
+        self.set_u8(0xff21, 0x00);
+        self.set_u8(0xff22, 0x00);
+        self.set_u8(0xff23, 0xbf);
+        self.set_u8(0xff24, 0x77);
+        self.set_u8(0xff25, 0xf3);
+        self.set_u8(0xff26, 0xf1);
+        self.set_u8(0xff40, 0x91);
+        self.set_u8(0xff42, 0x00);
+        self.set_u8(0xff43, 0x00);
+        self.set_u8(0xff45, 0x00);
+        self.set_u8(0xff47, 0xfc);
+        self.set_u8(0xff48, 0xff);
+        self.set_u8(0xff49, 0xff);
+        self.set_u8(0xff4a, 0x00);
+        self.set_u8(0xff4b, 0x00);
+        self.set_u8(0xffff, 0x00);
+    }
+
+    pub fn is_boot_rom_enabled(&self) -> bool {
+        self.boot_rom_enabled
     }
 
     fn set_io(&mut self, index: usize, value: u8) {
@@ -39,7 +85,7 @@ impl Memory {
             0xff47 => self.lcd_registers.bgp = value,
             0xff48 => self.lcd_registers.obp0 = value,
             0xff49 => self.lcd_registers.obp1 = value,
-            0xff50 => panic!("Disable boot rom"),
+            0xff50 => self.boot_rom_enabled = false,
             0xff4a => self.lcd_registers.wy = value,
             0xff4b => self.lcd_registers.wx = value,
             0xff4f => self.lcd_registers.vbk = value,
@@ -106,7 +152,7 @@ impl Memory {
     pub fn get_u8(&self, index: u16) -> u8 {
         let index = index as usize;
         match index {
-            x if x < self.boot_rom.len() => self.boot_rom[x],
+            x if self.is_valid_boot_rom_index(x) => self.boot_rom[x],
             ROM_0_START...ROM_0_END => self.cartridge.get_u8(index),
             ROM_N_START...ROM_N_END => self.cartridge.get_u8(index),
             VRAM_START...VRAM_END => self.vram[index - VRAM_START],
@@ -127,7 +173,7 @@ impl Memory {
     pub fn get_u16(&self, index: u16) -> u16 {
         let index = index as usize;
         match index {
-            x if x < self.boot_rom.len() => get_u16(&self.boot_rom, index),
+            x if self.is_valid_boot_rom_index(x) => get_u16(&self.boot_rom, index),
             ROM_0_START...ROM_0_END => self.cartridge.get_u16(index),
             ROM_N_START...ROM_N_END => self.cartridge.get_u16(index),
             VRAM_START...VRAM_END => get_u16(&self.vram, index - VRAM_START),
@@ -168,6 +214,10 @@ impl Memory {
             INTERRUPT_ENABLE_REG => unimplemented!(),
             x => bad_write_panic(x),
         }
+    }
+
+    fn is_valid_boot_rom_index(&self, index: usize) -> bool {
+        self.boot_rom_enabled && index < self.boot_rom.len()
     }
 }
 
