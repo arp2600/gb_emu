@@ -4,12 +4,12 @@ mod lcd;
 mod lcd_registers;
 mod memory;
 mod opcode_table;
-mod opcodes;
 mod registers;
+mod memory_values;
+use cartridge::Cartridge;
 use cpu::Cpu;
 use lcd::LCD;
 use memory::Memory;
-use cartridge::Cartridge;
 use std::fs;
 
 pub struct Emulator {
