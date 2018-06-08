@@ -1,40 +1,6 @@
 use super::lcd_registers::LCDRegisters;
 use cartridge::Cartridge;
-
-const KILOBYTE: usize = 1024;
-
-const ROM_0_START: usize = 0x0000;
-const ROM_0_END: usize = 0x3fff;
-
-const ROM_N_START: usize = 0x4000;
-const ROM_N_END: usize = 0x7fff;
-
-const VRAM_START: usize = 0x8000;
-const VRAM_END: usize = 0x9fff;
-const VRAM_SIZE: usize = 8 * KILOBYTE;
-
-const EXRAM_START: usize = 0xa000;
-const EXRAM_END: usize = 0xbfff;
-
-const WRAM_START: usize = 0xc000;
-const WRAM_SIZE: usize = 8 * KILOBYTE;
-const WRAM_END: usize = 0xdfff;
-
-const WRAM_ECHO_START: usize = 0xe000;
-const WRAM_ECHO_END: usize = 0xfdff;
-
-const OAM_START: usize = 0xfe00;
-const OAM_END: usize = 0xfe9f;
-const OAM_SIZE: usize = OAM_END - OAM_START + 1;
-
-const IO_START: usize = 0xff00;
-const IO_END: usize = 0xff7f;
-
-const HRAM_START: usize = 0xff80;
-const HRAM_SIZE: usize = 127;
-const HRAM_END: usize = 0xfffe;
-
-const INTERRUPT_ENABLE_REG: usize = 0xffff;
+use memory_values::*;
 
 pub struct Memory {
     boot_rom: Vec<u8>,
