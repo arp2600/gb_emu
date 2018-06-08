@@ -14,12 +14,24 @@ const VRAM_END: usize = VRAM_START + VRAM_SIZE - 1;
 const IO_START: usize = 0xff00;
 const IO_END: usize = 0xff7f;
 
+const WRAM_START: usize = 0xc000;
+const WRAM_SIZE: usize = 8 * KILOBYTE;
+const WRAM_END: usize = WRAM_START + WRAM_SIZE - 1;
+const WRAM_ECHO_START: usize = 0xe000;
+const WRAM_ECHO_END: usize = WRAM_ECHO_START + WRAM_SIZE - 1;
+
+const OAM_START: usize = 0xfe00;
+const OAM_END: usize = 0xfe9f;
+const OAM_SIZE: usize = OAM_END - OAM_START + 1;
+
 pub struct Memory {
     boot_rom: Vec<u8>,
     cartridge: Cartridge,
     hram: [u8; HRAM_SIZE],
     lcd_registers: LCDRegisters,
     vram: [u8; VRAM_SIZE],
+    wram: [u8; WRAM_SIZE],
+    oam: [u8; OAM_SIZE],
 }
 
 impl Memory {
@@ -30,6 +42,8 @@ impl Memory {
             hram: [0; HRAM_SIZE],
             lcd_registers: LCDRegisters::new(),
             vram: [0; VRAM_SIZE],
+            wram: [0; WRAM_SIZE],
+            oam: [0; OAM_SIZE],
         }
     }
 
@@ -99,24 +113,16 @@ impl Memory {
         let index = index as usize;
         match index {
             0x0...0x7FFF => bad_write_panic(index),
-            VRAM_START...VRAM_END => self.set_vram(index, value),
+            VRAM_START...VRAM_END => self.vram[index - VRAM_START] = value,
+            WRAM_START...WRAM_END => self.wram[index - WRAM_START] = value,
+            WRAM_ECHO_START...WRAM_ECHO_END => {
+                self.wram[index - WRAM_ECHO_START] = value;
+            }
+            OAM_START...OAM_END => self.oam[index - OAM_START] = value,
             IO_START...IO_END => self.set_io(index, value),
             HRAM_START...HRAM_END => self.hram[index - HRAM_START] = value,
             x => bad_write_panic(x),
         }
-        //
-        // 0x0000-0x3FFF 16KB ROM Bank 00
-        // 0x4000-0x7FFF 16KB ROM Bank 01..NN
-        // 0x8000-0x9FFF 8KB Video RAM (VRAM)
-        // 0xA000-0xBFFF 8KB External RAM
-        // 0xC000-0xCFFF 4KB Work RAM Bank 0 (WRAM)
-        // 0xD000-0xDFFF 4KB Work RAM Bank 1 (WRAM)
-        // 0xE000-0xFDFF Same as C000-DDFF (ECHO)
-        // 0xFE00-0xFE9F Sprite Attribute Table (OAM)
-        // 0xFEA0-0xFEFF Not Usable
-        // 0xFF00-0xFF7F I/O Ports
-        // 0xFF80-0xFFFE High RAM (HRAM)
-        // 0xFFFF        Interrupt Enable Register
     }
 
     pub fn get_u8(&self, index: u16) -> u8 {
@@ -124,6 +130,9 @@ impl Memory {
         match index {
             x if x < self.boot_rom.len() => self.boot_rom[x],
             0x0...0x7fff => self.cartridge.get_u8(index),
+            WRAM_START...WRAM_END => self.wram[index - WRAM_START],
+            WRAM_ECHO_START...WRAM_ECHO_END => self.wram[index - WRAM_ECHO_START],
+            OAM_START...OAM_END => self.oam[index - OAM_START],
             IO_START...IO_END => self.get_io(index),
             HRAM_START...HRAM_END => self.hram[index - HRAM_START],
             x => {
@@ -138,6 +147,9 @@ impl Memory {
         match index {
             x if x < self.boot_rom.len() => get_u16(&self.boot_rom, index),
             0x0...0x7fff => self.cartridge.get_u16(index),
+            WRAM_START...WRAM_END => get_u16(&self.wram, index - WRAM_START),
+            WRAM_ECHO_START...WRAM_ECHO_END => get_u16(&self.wram, index - WRAM_ECHO_START),
+            OAM_START...OAM_END => get_u16(&self.oam, index - OAM_START),
             HRAM_START...HRAM_END => get_u16(&self.hram, index - HRAM_START),
             x => {
                 let location = index_to_location(x);
@@ -149,6 +161,15 @@ impl Memory {
     pub fn set_u16(&mut self, index: u16, value: u16) {
         let index = index as usize;
         match index {
+            WRAM_START...WRAM_END => {
+                set_u16(&mut self.wram, index - WRAM_START, value);
+            }
+            WRAM_ECHO_START...WRAM_ECHO_END => {
+                set_u16(&mut self.wram, index - WRAM_ECHO_START, value);
+            }
+            OAM_START...OAM_END => {
+                set_u16(&mut self.oam, index - OAM_START, value);
+            }
             HRAM_START...HRAM_END => {
                 set_u16(&mut self.hram, index - HRAM_START, value);
             }
