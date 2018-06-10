@@ -15,7 +15,7 @@ fn main() {
                 s.push(c as char);
             }
         }
-        println!("serial data: {}", s);
+        println!("serial data: \"{}\"", s);
     };
 
     emulator.set_serial_io_callback(Box::new(serial_callback));

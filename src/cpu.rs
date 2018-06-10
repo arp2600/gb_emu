@@ -86,6 +86,8 @@ impl Cpu {
             0x88...0x8f | 0xce => "ADC",
             0xc0 | 0xc8 | 0xd0 | 0xd8 => "RET",
             0x68...0x6e => "LD",
+            0x9 | 0x19 | 0x29 | 0x39 => "ADD",
+            0xe9 => "JP",
             _ => "__",
         }
     }
@@ -151,6 +153,8 @@ impl Cpu {
             0x88...0x8f | 0xce => self.adc_a_n(opcode, memory),
             0xc0 | 0xc8 | 0xd0 | 0xd8 => self.ret_cc(opcode, memory),
             0x68...0x6e => self.ld_l_n(opcode, memory),
+            0x9 | 0x19 | 0x29 | 0x39 => self.add_hl_n(opcode),
+            0xe9 => self.jp_hl(),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -211,6 +215,32 @@ impl Cpu {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn jp_hl(&mut self) {
+        self.registers.pc = self.registers.get_hl();
+        self.cycles += 4;
+    }
+
+    fn add_hl_n(&mut self, opcode: u8) {
+        let n = match opcode {
+            0x09 => self.registers.get_bc(),
+            0x19 => self.registers.get_de(),
+            0x29 => self.registers.get_hl(),
+            0x39 => self.registers.sp,
+            _ => panic!("Bad opcode {}", opcode),
+        };
+
+        let hl = self.registers.get_hl();
+        let result = hl.wrapping_add(n);
+        self.registers.set_hl(result);
+        
+        self.registers.set_flagn(false);
+        self.registers.set_flagh((hl & 0xfff) + (n & 0xfff) > 0xfff);
+        self.registers.set_flagc(u32::from(hl) + u32::from(n) > 0xffff);
+
+        self.registers.pc += 1;
+        self.cycles += 8;
+    }
 
     fn ld_l_n(&mut self, opcode: u8, memory: &mut Memory) {
         self.registers.l = match opcode {
