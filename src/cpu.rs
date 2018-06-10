@@ -82,6 +82,10 @@ impl Cpu {
             0xa0...0xa7 | 0xe6 => "AND",
             0xa8...0xaf | 0xee => "XOR",
             0xc4 | 0xcc | 0xd4 | 0xdc => "CALL",
+            0x1f => "RRA",
+            0x88...0x8f | 0xce => "ADC",
+            0xc0 | 0xc8 | 0xd0 | 0xd8 => "RET",
+            0x68...0x6e => "LD",
             _ => "__",
         }
     }
@@ -143,11 +147,15 @@ impl Cpu {
             0xa0...0xa7 | 0xe6 => self.and_n(opcode, memory),
             0xa8...0xaf | 0xee => self.xor_n(opcode, memory),
             0xc4 | 0xcc | 0xd4 | 0xdc => self.call_cc_nn(opcode, memory),
+            0x1f => self.rra(),
+            0x88...0x8f | 0xce => self.adc_a_n(opcode, memory),
+            0xc0 | 0xc8 | 0xd0 | 0xd8 => self.ret_cc(opcode, memory),
+            0x68...0x6e => self.ld_l_n(opcode, memory),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
 
-    fn fetch_and_execute_cb(&mut self, memory: &Memory) {
+    fn fetch_and_execute_cb(&mut self, memory: &mut Memory) {
         self.registers.pc += 1;
         let opcode = memory.get_u8(self.registers.pc);
 
@@ -175,7 +183,7 @@ impl Cpu {
         }
     }
 
-    fn set_dest_u8(&mut self, index: u8, value: u8) {
+    fn set_dest_u8(&mut self, index: u8, value: u8, memory: &mut Memory) {
         match index {
             0 => self.registers.b = value,
             1 => self.registers.c = value,
@@ -183,10 +191,10 @@ impl Cpu {
             3 => self.registers.e = value,
             4 => self.registers.h = value,
             5 => self.registers.l = value,
-            // 6 => {
-            //     let hl = self.registers.get_hl();
-            //     memory.get_u8(hl)
-            // }
+            6 => {
+                let hl = self.registers.get_hl();
+                memory.set_u8(hl, value);
+            }
             7 => self.registers.a = value,
             _ => panic!("Bad register {}", index),
         }
@@ -203,6 +211,92 @@ impl Cpu {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn ld_l_n(&mut self, opcode: u8, memory: &mut Memory) {
+        self.registers.l = match opcode {
+            0x68...0x6e => {
+                let reg_index = opcode & 0b0000_0111;
+                self.get_source_u8(reg_index, memory)
+            }
+            _ => panic!("Bad opcode {}", opcode),
+        };
+
+        self.registers.pc += 1;
+        match opcode {
+            0x6e => self.cycles += 8,
+            _ => self.cycles += 4,
+        }
+    }
+
+    fn ret_cc(&mut self, opcode: u8, memory: &mut Memory) {
+        let cc = match opcode {
+            0xc0 => !self.registers.flagz(),
+            0xc8 => self.registers.flagz(),
+            0xd0 => !self.registers.flagc(),
+            0xd8 => self.registers.flagc(),
+            _ => panic!("Bad opcode {}", opcode),
+        };
+
+        if cc {
+            self.registers.pc = memory.get_u16(self.registers.sp);
+            self.registers.sp += 2;
+            self.cycles += 20;
+        } else {
+            self.registers.pc += 1;
+            self.cycles += 8;
+        }
+    }
+
+    fn adc_a_n(&mut self, opcode: u8, memory: &mut Memory) {
+        let mut n = match opcode {
+            0x88...0x8f => {
+                let reg_index = opcode & 0b0000_0111;
+                self.get_source_u8(reg_index, memory)
+            }
+            0xce => {
+                let n = self.load_imm_u8(memory);
+                self.registers.pc += 1;
+                n
+            }
+            _ => panic!("Bad opcode {}", opcode),
+        };
+
+        if self.registers.flagc() {
+            n += 1;
+        }
+
+        let a = self.registers.a;
+        let result = a.wrapping_add(n);
+        self.registers.a = result;
+
+        self.registers.clear_flags();
+        self.registers.set_flagz(result == 0);
+        self.registers.set_flagh((a & 0xf) + (n & 0xf) > 0xf);
+        self.registers.set_flagc(u16::from(a) + u16::from(n) > 255);
+
+        self.registers.pc += 1;
+        match opcode {
+            0x8e | 0xce => self.cycles += 8,
+            _ => self.cycles += 4,
+        }
+    }
+
+    fn rra(&mut self) {
+        let a = self.registers.a;
+        let mut result = a >> 1;
+        if self.registers.flagc() {
+            result += 0b1000_0000;
+        }
+
+        self.registers.clear_flags();
+        self.registers.set_flagz(result == 0);
+        self.registers.set_flagz(a & 0b1 == 1);
+
+        self.registers.a = result;
+
+        self.registers.pc += 1;
+        self.cycles += 4;
+    }
 
     fn call_cc_nn(&mut self, opcode: u8, memory: &mut Memory) {
         let cc = match opcode {
@@ -447,7 +541,7 @@ impl Cpu {
         self.cycles += 8;
     }
 
-    fn dec_n(&mut self, opcode: u8, memory: &Memory) {
+    fn dec_n(&mut self, opcode: u8, memory: &mut Memory) {
         let reg_index = (opcode & 0b0011_1000) >> 3;
         let source = self.get_source_u8(reg_index, memory);
         let result = source.wrapping_sub(1);
@@ -456,7 +550,7 @@ impl Cpu {
         self.registers.set_flagn(true);
         self.registers.set_flagh(source.trailing_zeros() >= 4);
 
-        self.set_dest_u8(reg_index, result);
+        self.set_dest_u8(reg_index, result, memory);
         self.registers.pc += 1;
         match opcode {
             0x35 => self.cycles += 12,
@@ -499,7 +593,7 @@ impl Cpu {
         self.cycles += 4;
     }
 
-    fn rl_n(&mut self, opcode: u8, memory: &Memory) {
+    fn rl_n(&mut self, opcode: u8, memory: &mut Memory) {
         let reg_index = opcode & 0b0000_0111;
         let source = self.get_source_u8(reg_index, memory);
         let mut value = source << 1;
@@ -511,7 +605,7 @@ impl Cpu {
         self.registers.set_flagz(value == 0);
         self.registers.set_flagc((source & 0b1000_0000) != 0);
 
-        self.set_dest_u8(reg_index, value);
+        self.set_dest_u8(reg_index, value, memory);
         self.registers.pc += 1;
         match opcode {
             0x16 => self.cycles += 16,
@@ -555,7 +649,7 @@ impl Cpu {
         match opcode {
             0x7f | 0x47 | 0x4f | 0x57 | 0x5f | 0x67 | 0x6f => {
                 let reg_index = (opcode & 0b0011_1000) >> 3;
-                self.set_dest_u8(reg_index, value);
+                self.set_dest_u8(reg_index, value, memory);
             }
             0x02 => {
                 let addr = self.registers.get_bc();
@@ -609,14 +703,14 @@ impl Cpu {
         self.cycles += 8;
     }
 
-    fn inc_n(&mut self, opcode: u8, memory: &Memory) {
+    fn inc_n(&mut self, opcode: u8, memory: &mut Memory) {
         let reg_index = (opcode & 0b11_1000) >> 3;
         let source = self.get_source_u8(reg_index, memory);
         let result = source.wrapping_add(1);
         self.registers.set_flagz(result == 0);
         self.registers.set_flagn(false);
         self.registers.set_flagh((source & 0xf) + 1 > 0xf);
-        self.set_dest_u8(reg_index, result);
+        self.set_dest_u8(reg_index, result, memory);
         self.registers.pc += 1;
         match opcode {
             0x34 => self.cycles += 12,
@@ -664,10 +758,10 @@ impl Cpu {
         self.cycles += 8;
     }
 
-    fn ld_nn_n(&mut self, opcode: u8, memory: &Memory) {
+    fn ld_nn_n(&mut self, opcode: u8, memory: &mut Memory) {
         let dest_index = (opcode & 0b0011_1000) >> 3;
         let value = self.load_imm_u8(memory);
-        self.set_dest_u8(dest_index, value);
+        self.set_dest_u8(dest_index, value, memory);
         self.registers.pc += 2;
         self.cycles += 8;
     }
