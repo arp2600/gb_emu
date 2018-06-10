@@ -17,6 +17,7 @@ pub struct Emulator {
     cpu: Cpu,
     lcd: LCD,
     memory: Memory,
+    tracing: bool,
 }
 
 impl Emulator {
@@ -35,12 +36,12 @@ impl Emulator {
         };
         let lcd = LCD::new();
 
-        Emulator { cpu, lcd, memory }
+        Emulator { cpu, lcd, memory, tracing: false }
     }
 
     pub fn tick(&mut self) {
         self.lcd.tick(&mut self.memory, self.cpu.get_cycles());
-        self.cpu.tick(&mut self.memory);
+        self.cpu.tick(&mut self.memory, self.tracing);
     }
 
     pub fn is_boot_rom_enabled(&self) -> bool {
@@ -49,5 +50,9 @@ impl Emulator {
 
     pub fn get_registers(&self) -> &Registers {
         self.cpu.get_registers()
+    }
+
+    pub fn set_tracing(&mut self, state: bool) {
+        self.tracing = state;
     }
 }

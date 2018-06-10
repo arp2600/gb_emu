@@ -33,12 +33,14 @@ impl Cpu {
         &self.registers
     }
 
-    pub fn tick(&mut self, memory: &mut Memory) {
+    pub fn tick(&mut self, memory: &mut Memory, tracing: bool) {
         let cycles = self.cycles;
         self.instruction_counter += 1;
         let mnemonic = self.get_opcode_mnemonic(memory);
         self.fetch_and_execute(memory);
-        // println!("{} {:?} {}", mnemonic, self.registers, self.cycles - cycles);
+        if tracing {
+            println!("{} {:?} {}", mnemonic, self.registers, self.cycles - cycles);
+        }
     }
 
     fn get_opcode_mnemonic(&self, memory: &Memory) -> &'static str {
