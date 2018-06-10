@@ -12,7 +12,7 @@ impl Cartridge {
         let mut full_rom = fs::read(file_path).unwrap();
         let mut remaining = full_rom.split_off(ROM_BANK_SIZE);
         let mut other_banks = Vec::new();
-        while remaining.len() > ROM_BANK_SIZE {
+        while remaining.len() >= ROM_BANK_SIZE {
             let tail = remaining.split_off(ROM_BANK_SIZE);
             other_banks.push(remaining);
             remaining = tail;
@@ -32,6 +32,9 @@ impl Cartridge {
     pub fn get_u8(&self, index: usize) -> u8 {
         match index {
             0x0...0x3fff => self.zero_bank[index],
+            0x4000...0x7fff => {
+                self.other_banks[0][index - 0x4000]
+            }
             _ => panic!("Bad read at {}", index),
         }
     }
