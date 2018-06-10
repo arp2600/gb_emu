@@ -4,6 +4,7 @@ use super::registers::Registers;
 pub struct Cpu {
     registers: Registers,
     instruction_counter: usize,
+    interrupts_enabled: bool,
     cycles: u64,
 }
 
@@ -12,6 +13,7 @@ impl Cpu {
         Cpu {
             registers: Registers::new(),
             instruction_counter: 0,
+            interrupts_enabled: false,
             cycles: 0,
         }
     }
@@ -73,6 +75,13 @@ impl Cpu {
             0x90...0x97 | 0xd6 => "SUB",
             0x80...0x87 | 0xc6 => "ADD",
             0xc3 => "JP",
+            0xf3 => "DI",
+            0xfb => "EI",
+            0x2a => "LD",
+            0xb0...0xb7 | 0xf6 => "OR",
+            0xa0...0xa7 | 0xe6 => "AND",
+            0xa8...0xaf | 0xee => "XOR",
+            0xc4 | 0xcc | 0xd4 | 0xdc => "CALL",
             _ => "__",
         }
     }
@@ -127,6 +136,13 @@ impl Cpu {
             0x90...0x97 | 0xd6 => self.sub_n(opcode, memory),
             0x80...0x87 | 0xc6 => self.add_a_n(opcode, memory),
             0xc3 => self.jp_nn(memory),
+            0xf3 => self.set_interrupts(false),
+            0xfb => self.set_interrupts(true),
+            0x2a => self.ldi_a_hl(memory),
+            0xb0...0xb7 | 0xf6 => self.or_n(opcode, memory),
+            0xa0...0xa7 | 0xe6 => self.and_n(opcode, memory),
+            0xa8...0xaf | 0xee => self.xor_n(opcode, memory),
+            0xc4 | 0xcc | 0xd4 | 0xdc => self.call_cc_nn(opcode, memory),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -188,6 +204,124 @@ impl Cpu {
                          Opcodes
     ************************************************************/
 
+    fn call_cc_nn(&mut self, opcode: u8, memory: &mut Memory) {
+        let cc = match opcode {
+            0xc4 => !self.registers.flagz(),
+            0xcc => self.registers.flagz(),
+            0xd4 => !self.registers.flagc(),
+            0xdc => self.registers.flagc(),
+            _ => panic!("Bad opcode {}", opcode),
+        };
+
+        self.registers.pc += 3;
+
+        if cc {
+            let nn = self.load_imm_u16(memory);
+            memory.set_u16(self.registers.sp - 2, self.registers.pc);
+            self.registers.sp -= 2;
+            self.registers.pc = nn;
+            self.cycles += 24;
+        } else {
+            self.cycles += 12;
+        }
+    }
+
+    fn xor_n(&mut self, opcode: u8, memory: &Memory) {
+        let n = match opcode {
+            0xa8...0xaf => {
+                let reg_index = opcode & 0b0000_0111;
+                self.get_source_u8(reg_index, memory)
+            }
+            0xee => {
+                let n = self.load_imm_u8(memory);
+                self.registers.pc += 1;
+                n
+            }
+            _ => panic!("Bad opcode {}", opcode),
+        };
+
+        let result = n ^ self.registers.a;
+        self.registers.a = result;
+        self.registers.clear_flags();
+        self.registers.set_flagz(result == 0);
+
+        self.registers.pc += 1;
+        match opcode {
+            0xae | 0xee => self.cycles += 8,
+            _ => self.cycles += 4,
+        }
+
+    }
+
+    fn and_n(&mut self, opcode: u8, memory: &Memory) {
+        let n = match opcode {
+            0xa0...0xa7 => {
+                let reg_index = opcode & 0b0000_0111;
+                self.get_source_u8(reg_index, memory)
+            }
+            0xe6 => {
+                let n = self.load_imm_u8(memory);
+                self.registers.pc += 1;
+                n
+            }
+            _ => panic!("Bad opcode {}", opcode),
+        };
+
+        let result = n & self.registers.a;
+        self.registers.a = result;
+        self.registers.clear_flags();
+        self.registers.set_flagz(result == 0);
+        self.registers.set_flagh(true);
+
+        self.registers.pc += 1;
+        match opcode {
+            0xa6 | 0xe6 => self.cycles += 8,
+            _ => self.cycles += 4,
+        }
+
+    }
+
+    fn or_n(&mut self, opcode: u8, memory: &Memory) {
+        let n = match opcode {
+            0xb0...0xb7 => {
+                let reg_index = opcode & 0b0000_0111;
+                self.get_source_u8(reg_index, memory)
+            }
+            0xf6 => {
+                let n = self.load_imm_u8(memory);
+                self.registers.pc += 1;
+                n
+            }
+            _ => panic!("Bad opcode {}", opcode),
+        };
+
+        let result = n | self.registers.a;
+        self.registers.a = result;
+        self.registers.clear_flags();
+        self.registers.set_flagz(result == 0);
+
+        self.registers.pc += 1;
+        match opcode {
+            0xb6 | 0xf6 => self.cycles += 8,
+            _ => self.cycles += 4,
+        }
+
+    }
+
+    fn ldi_a_hl(&mut self, memory: &Memory) {
+        let v = memory.get_u8(self.registers.get_hl());
+        self.registers.a = v;
+
+        self.registers.pc += 1;
+        self.cycles += 8;
+    }
+
+    fn set_interrupts(&mut self, state: bool) {
+        self.interrupts_enabled = state;
+        self.registers.pc += 1;
+        self.cycles += 4;
+    }
+
     fn jp_nn(&mut self, memory: &Memory) {
         let nn = self.load_imm_u16(memory);
         self.registers.pc = nn;
@@ -244,7 +378,7 @@ impl Cpu {
         };
 
         let a = self.registers.a;
-        self.registers.a = a - n;
+        self.registers.a = a.wrapping_sub(n);
 
         self.registers.set_flagz(a <= n);
         self.registers.set_flagn(true);
@@ -480,7 +614,7 @@ impl Cpu {
     fn inc_n(&mut self, opcode: u8, memory: &Memory) {
         let reg_index = (opcode & 0b11_1000) >> 3;
         let source = self.get_source_u8(reg_index, memory);
-        let result = source + 1;
+        let result = source.wrapping_add(1);
         self.registers.set_flagz(result == 0);
         self.registers.set_flagn(false);
         self.registers.set_flagh((source & 0xf) + 1 > 0xf);
