@@ -22,7 +22,8 @@ pub struct Emulator {
 impl Emulator {
     pub fn new(boot_rom_path: Option<&str>, cartridge_rom_path: &str) -> Emulator {
         let mut cpu = Cpu::new();
-        let mut cartridge = Cartridge::from_file(cartridge_rom_path);
+        let cartridge = Cartridge::from_file(cartridge_rom_path);
+
         let memory = if let Some(x) = boot_rom_path {
             let boot_rom = fs::read(x).ok();
             Memory::new(boot_rom, cartridge)
@@ -32,7 +33,7 @@ impl Emulator {
             m.skip_boot_rom();
             m
         };
-        let mut lcd = LCD::new();
+        let lcd = LCD::new();
 
         Emulator { cpu, lcd, memory }
     }

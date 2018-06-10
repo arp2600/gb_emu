@@ -25,7 +25,7 @@ impl Cpu {
         self.registers.pc = 0x0100;
     }
 
-    pub fn get_cycles(&mut self) -> u64 {
+    pub fn get_cycles(&self) -> u64 {
         self.cycles
     }
 
