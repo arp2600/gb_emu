@@ -6,7 +6,8 @@ fn post_boot_rom_state() {
     let boot_rom = "../ROMs/dmg_rom.gb";
     let cartridge_rom = "../ROMs/tetris.gb";
     let mut emulator = Emulator::new(Some(&boot_rom), &cartridge_rom);
-    for _ in 0..3000_000 { // Make sure test doesn't get stuck
+    // Prevent infinite loops
+    for _ in 0..3000_000 {
         emulator.tick();
         if !emulator.is_boot_rom_enabled() {
             break;
