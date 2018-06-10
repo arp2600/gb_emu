@@ -27,7 +27,7 @@ macro_rules! create_get_set_flag {
     };
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Registers {
     pub a: u8,
     pub b: u8,
@@ -42,21 +42,6 @@ pub struct Registers {
 }
 
 impl Registers {
-    pub fn new() -> Registers {
-        Registers {
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-            e: 0,
-            f: 0,
-            h: 0,
-            l: 0,
-            sp: 0,
-            pc: 0,
-        }
-    }
-
     create_get_set!(get_af, set_af, a, f);
     create_get_set!(get_bc, set_bc, b, c);
     create_get_set!(get_de, set_de, d, e);

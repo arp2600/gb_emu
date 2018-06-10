@@ -27,7 +27,6 @@ impl LCD {
             memory.set_u8(0xff44, ly);
             let lyc = memory.get_u8(0xff45);
             if ly == lyc {
-                let stat = memory.get_u8(0xff41);
                 memory.set_u8(0xff41, 0b10);
             }
         }

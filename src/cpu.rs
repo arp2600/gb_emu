@@ -11,7 +11,7 @@ pub struct Cpu {
 impl Cpu {
     pub fn new() -> Cpu {
         Cpu {
-            registers: Registers::new(),
+            registers: Default::default(),
             instruction_counter: 0,
             interrupts_enabled: false,
             cycles: 0,
@@ -52,7 +52,6 @@ impl Cpu {
             0x00 => "NOP",
             0xcb => self.get_cb_opcode_mnemonic(memory),
             0x01 | 0x11 | 0x21 | 0x31 => "LD",
-            0xab...0xaf => "XOR",
             0x32 => "LDD",
             0x20 | 0x28 | 0x30 | 0x38 => "JR",
             0x06 | 0x0e | 0x16 | 0x1e | 0x26 | 0x2e => "LD",
@@ -109,7 +108,6 @@ impl Cpu {
             0x00 => self.nop(),
             0xcb => self.fetch_and_execute_cb(memory),
             0x01 | 0x11 | 0x21 | 0x31 => self.ld_n_nn(opcode, memory),
-            0xab...0xaf => self.xor(opcode, memory),
             0x32 => self.ldd_hl_a(memory),
             0x20 | 0x28 | 0x30 | 0x38 => self.jr_cc_n(opcode, memory),
             0x06 | 0x0e | 0x16 | 0x1e | 0x26 | 0x2e => {
@@ -233,10 +231,11 @@ impl Cpu {
         let hl = self.registers.get_hl();
         let result = hl.wrapping_add(n);
         self.registers.set_hl(result);
-        
+
         self.registers.set_flagn(false);
         self.registers.set_flagh((hl & 0xfff) + (n & 0xfff) > 0xfff);
-        self.registers.set_flagc(u32::from(hl) + u32::from(n) > 0xffff);
+        self.registers
+            .set_flagc(u32::from(hl) + u32::from(n) > 0xffff);
 
         self.registers.pc += 1;
         self.cycles += 8;
@@ -820,21 +819,6 @@ impl Cpu {
         memory.set_u8(hl, self.registers.a);
         self.registers.pc += 1;
         self.cycles += 8;
-    }
-
-    fn xor(&mut self, opcode: u8, memory: &Memory) {
-        let source_index = opcode & 0b111;
-        let x = self.get_source_u8(source_index, memory);
-
-        self.registers.a ^= x;
-        self.registers.clear_flags();
-        let flagz = self.registers.a == 0;
-        self.registers.set_flagz(flagz);
-        self.registers.pc += 1;
-        match opcode {
-            0xae | 0xee => self.cycles += 8,
-            _ => self.cycles += 4,
-        }
     }
 
     fn ld_n_nn(&mut self, opcode: u8, memory: &Memory) {

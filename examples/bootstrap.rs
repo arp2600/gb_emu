@@ -11,7 +11,7 @@ fn main() {
         serial_vector.push(x);
         let mut s = String::new();
         for (i, &c) in serial_vector.iter().enumerate() {
-            if i%2 == 0 {
+            if i % 2 == 0 {
                 s.push(c as char);
             }
         }
