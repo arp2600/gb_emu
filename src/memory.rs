@@ -106,8 +106,14 @@ impl Memory {
 
     fn get_io(&self, index: usize) -> u8 {
         match index {
-            0xff01 => { println!("get SB"); 0 },
-            0xff02 => { println!("get SC"); 0 },
+            0xff01 => {
+                println!("get SB");
+                0
+            }
+            0xff02 => {
+                println!("get SC");
+                0
+            }
             0xff40 => self.lcd_registers.lcdc,
             0xff41 => self.lcd_registers.stat,
             0xff42 => self.lcd_registers.sy,

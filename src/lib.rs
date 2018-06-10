@@ -36,7 +36,12 @@ impl Emulator {
         };
         let lcd = LCD::new();
 
-        Emulator { cpu, lcd, memory, tracing: false }
+        Emulator {
+            cpu,
+            lcd,
+            memory,
+            tracing: false,
+        }
     }
 
     pub fn tick(&mut self) {

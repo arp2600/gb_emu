@@ -250,7 +250,6 @@ impl Cpu {
             0xae | 0xee => self.cycles += 8,
             _ => self.cycles += 4,
         }
-
     }
 
     fn and_n(&mut self, opcode: u8, memory: &Memory) {
@@ -278,7 +277,6 @@ impl Cpu {
             0xa6 | 0xe6 => self.cycles += 8,
             _ => self.cycles += 4,
         }
-
     }
 
     fn or_n(&mut self, opcode: u8, memory: &Memory) {
@@ -305,7 +303,6 @@ impl Cpu {
             0xb6 | 0xf6 => self.cycles += 8,
             _ => self.cycles += 4,
         }
-
     }
 
     fn ldi_a_hl(&mut self, memory: &Memory) {
