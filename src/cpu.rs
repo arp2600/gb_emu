@@ -77,7 +77,7 @@ impl Cpu {
             0xc3 => "JP",
             0xf3 => "DI",
             0xfb => "EI",
-            0x2a => "LD",
+            0x2a => "LDI",
             0xb0...0xb7 | 0xf6 => "OR",
             0xa0...0xa7 | 0xe6 => "AND",
             0xa8...0xaf | 0xee => "XOR",
@@ -306,7 +306,8 @@ impl Cpu {
     }
 
     fn ldi_a_hl(&mut self, memory: &Memory) {
-        let v = memory.get_u8(self.registers.get_hl());
+        let hl = self.registers.hli();
+        let v = memory.get_u8(hl);
         self.registers.a = v;
 
         self.registers.pc += 1;
