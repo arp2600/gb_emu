@@ -1,6 +1,6 @@
 // extern crate gb_emu;
 // use gb_emu::Emulator;
-// 
+//
 // #[test]
 // fn post_boot_rom_state() {
 //     let boot_rom = "../ROMs/dmg_rom.gb";
@@ -13,9 +13,9 @@
 //             break;
 //         }
 //     }
-// 
+//
 //     let registers = emulator.get_registers();
-// 
+//
 //     assert_eq!(registers.get_af(), 0x01b0);
 //     assert_eq!(registers.get_bc(), 0x0013);
 //     assert_eq!(registers.get_de(), 0x00d8);

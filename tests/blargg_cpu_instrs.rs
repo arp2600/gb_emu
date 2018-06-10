@@ -61,7 +61,6 @@ fn cpu_instrs() {
     run_test_rom("blargg_test_roms/cpu_instrs/cpu_instrs.gb");
 }
 
-
 fn run_test_rom(test_rom_path: &str) {
     let mut emulator = Emulator::new(None, test_rom_path);
     for _ in 0..3000_000 {

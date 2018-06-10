@@ -60,4 +60,8 @@ impl Emulator {
     pub fn set_tracing(&mut self, state: bool) {
         self.tracing = state;
     }
+
+    pub fn set_serial_io_callback(&mut self, callback: Box<FnMut(u8)>) {
+        self.memory.set_serial_io_callback(callback);
+    }
 }

@@ -1,6 +1,7 @@
 use super::lcd_registers::LCDRegisters;
 use cartridge::Cartridge;
 use memory_values::*;
+use std::ops::FnMut;
 
 pub struct Memory {
     boot_rom: Vec<u8>,
@@ -12,6 +13,8 @@ pub struct Memory {
     hram: [u8; HRAM_SIZE],
     lcd_registers: LCDRegisters,
     interrupt_enable_register: u8,
+    serial_io_callback: Option<Box<FnMut(u8)>>,
+    serial_data: u8,
 }
 
 impl Memory {
@@ -32,7 +35,13 @@ impl Memory {
             wram: [0; WRAM_SIZE],
             oam: [0; OAM_SIZE],
             interrupt_enable_register: 0,
+            serial_io_callback: None,
+            serial_data: 0,
         }
+    }
+
+    pub fn set_serial_io_callback(&mut self, callback: Box<FnMut(u8)>) {
+        self.serial_io_callback = Some(callback);
     }
 
     pub fn skip_boot_rom(&mut self) {
@@ -75,8 +84,11 @@ impl Memory {
 
     fn set_io(&mut self, index: usize, value: u8) {
         match index {
-            0xff01 => println!("SB = {:#04x}", value),
-            0xff02 => println!("SC = {:#04x}", value),
+            0xff01 => self.serial_data = value,
+            0xff02 => match &mut self.serial_io_callback {
+                Some(x) => x(self.serial_data),
+                None => (),
+            },
             0xff40 => self.lcd_registers.lcdc = value,
             0xff41 => self.lcd_registers.stat = value,
             0xff42 => self.lcd_registers.sy = value,
@@ -108,7 +120,7 @@ impl Memory {
         match index {
             0xff01 => {
                 println!("get SB");
-                0
+                self.serial_data
             }
             0xff02 => {
                 println!("get SC");
