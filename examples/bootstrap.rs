@@ -15,20 +15,13 @@ fn main() {
                 s.push(c as char);
             }
         }
-        println!("serial data: \"{}\"", s);
+        // println!("serial data: \"{}\"", s);
     };
 
     emulator.set_serial_io_callback(Box::new(serial_callback));
 
-    for _ in 0..300_000 {
-        emulator.tick();
-        if emulator.get_registers().pc == 51154 {
-            println!("end of test at pc 51154");
-            break;
-        }
-    }
     emulator.set_tracing(true);
-    for _ in 0..5 {
+    for _ in 0..5000 {
         emulator.tick();
     }
 }

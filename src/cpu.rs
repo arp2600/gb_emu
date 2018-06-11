@@ -36,69 +36,222 @@ impl Cpu {
     }
 
     pub fn tick(&mut self, memory: &mut Memory, tracing: bool) {
-        let cycles = self.cycles;
         self.instruction_counter += 1;
-        let mnemonic = self.get_opcode_mnemonic(memory);
+        let mnemonic = if tracing {
+            Some(self.get_opcode_mnemonic(memory))
+        } else {
+            None
+        };
+        let opcode = memory.get_u8(self.registers.pc);
+
         self.fetch_and_execute(memory);
+
         if tracing {
-            println!("{} {:?} {}", mnemonic, self.registers, self.cycles - cycles);
+            println!("{:020}|  {:#04x}", mnemonic.unwrap(), opcode);
         }
     }
 
-    fn get_opcode_mnemonic(&self, memory: &Memory) -> &'static str {
+    fn get_opcode_mnemonic(&self, memory: &Memory) -> String {
         let opcode = memory.get_u8(self.registers.pc);
 
         match opcode {
-            0x00 => "NOP",
+            0x00 => "nop".to_string(),
+            0x01 => format!("ld BC, {:#06x}", self.load_imm_u16(memory)),
+            0x11 => format!("ld DE, {:#06x}", self.load_imm_u16(memory)),
+            0x21 => format!("ld HL, {:#06x}", self.load_imm_u16(memory)),
+            0x31 => format!("ld SP, {:#06x}", self.load_imm_u16(memory)),
+            0x20 => format!("jr NZ, {}", self.load_imm_u8(memory) as i8),
+            0x28 => format!("jr Z, {}", self.load_imm_u8(memory) as i8),
+            0x30 => format!("jr NC, {}", self.load_imm_u8(memory) as i8),
+            0x38 => format!("jr C, {}", self.load_imm_u8(memory) as i8),
+            0x06 => format!("ld B, {:#04x}", self.load_imm_u8(memory)),
+            0x0e => format!("ld C, {:#04x}", self.load_imm_u8(memory)),
+            0x16 => format!("ld D, {:#04x}", self.load_imm_u8(memory)),
+            0x1e => format!("ld E, {:#04x}", self.load_imm_u8(memory)),
+            0x26 => format!("ld H, {:#04x}", self.load_imm_u8(memory)),
+            0x2e => format!("ld L, {:#04x}", self.load_imm_u8(memory)),
+            0x3c => format!("inc A({:#04x})", self.registers.a),
+            0x04 => format!("inc B({:#04x})", self.registers.b),
+            0x0c => format!("inc C({:#04x})", self.registers.c),
+            0x14 => format!("inc D({:#04x})", self.registers.d),
+            0x1c => format!("inc E({:#04x})", self.registers.e),
+            0x24 => format!("inc H({:#04x})", self.registers.h),
+            0x2c => format!("inc L({:#04x})", self.registers.l),
+            0x34 => format!("inc (HL({:#04x}))", self.registers.get_hl()),
+            0x47 => format!("ld B, {:#04x}", self.registers.a),
+            0x4f => format!("ld C, {:#04x}", self.registers.a),
+            0x57 => format!("ld D, {:#04x}", self.registers.a),
+            0x5f => format!("ld E, {:#04x}", self.registers.a),
+            0x67 => format!("ld H, {:#04x}", self.registers.a),
+            0x6f => format!("ld L, {:#04x}", self.registers.a),
+            0x02 => format!("ld (BC), {:#04x}", self.registers.a),
+            0x12 => format!("ld (DE), {:#04x}", self.registers.a),
+            0x77 => format!("ld (HL), {:#04x}", self.registers.a),
+            0xea => format!(
+                "ld ({:#06x}), {:#04x}",
+                self.load_imm_u16(memory),
+                self.registers.a
+            ),
+            0xe0 => format!(
+                "ldh ({:#04x}), {:#04}",
+                0xff00 + u16::from(self.load_imm_u8(memory)),
+                self.registers.a
+            ),
+            0x18 => format!("jr {:#04x}", self.load_imm_u8(memory) as i8),
+            0xc3 => format!("jp {:#06x}", self.load_imm_u16(memory)),
+            0x2a => format!("ldi A, (HL({:#06x}))", self.registers.get_hl()),
+            0x32 => format!(
+                "ldd (HL{:#06x}), A{:#04x}",
+                self.registers.get_hl(),
+                self.registers.a
+            ),
+            0x0a => format!("ld A, (BC({:#06x}))", self.registers.get_bc()),
+            0x1a => format!("ld A, (DE({:#06x}))", self.registers.get_de()),
+            0x3e => format!("ld A, {:#04x}", self.load_imm_u8(memory)),
+            0x78 => format!("ld A, B({:#04x})", self.registers.b),
+            0x79 => format!("ld A, C({:#04x})", self.registers.c),
+            0x7a => format!("ld A, D({:#04x})", self.registers.d),
+            0x7b => format!("ld A, E({:#04x})", self.registers.e),
+            0x7c => format!("ld A, H({:#04x})", self.registers.h),
+            0x7d => format!("ld A, L({:#04x})", self.registers.l),
+            0x7e => format!("ld A, (HL({:#06x}))", self.registers.get_hl()),
+            0x7f => format!("ld A, A({:#04x})", self.registers.a),
+            0xfa => format!("ld A, ({:#06x})", self.load_imm_u16(memory)),
+            0xe2 => format!("ld (C), A({:#04x})", self.registers.a),
+            0xcd => format!("call {:#06x}", self.load_imm_u16(memory)),
+            0xf5 => "push AF".to_string(),
+            0xc5 => "push BC".to_string(),
+            0xd5 => "push DE".to_string(),
+            0xe5 => "push HL".to_string(),
+            0xf1 => "pop AF".to_string(),
+            0xc1 => "pop BC".to_string(),
+            0xd1 => "pop DE".to_string(),
+            0xe1 => "pop HL".to_string(),
+            0x17 => "rla".to_string(),
+            0x3d => "dec A".to_string(),
+            0x05 => "dec B".to_string(),
+            0x0d => "dec C".to_string(),
+            0x15 => "dec D".to_string(),
+            0x1d => "dec E".to_string(),
+            0x25 => "dec H".to_string(),
+            0x2d => "dec L".to_string(),
+            0x35 => "dec (HL)".to_string(),
+            0x22 => format!(
+                "ldi (HL({:#06x}), A({:#04x})",
+                self.registers.get_hl(),
+                self.registers.a
+            ),
+            0x03 => "inc BC".to_string(),
+            0x13 => "inc DE".to_string(),
+            0x23 => "inc HL".to_string(),
+            0x33 => "inc SP".to_string(),
+            0xc9 => "ret".to_string(),
+            0xb8 => format!("cp B({:#04x})", self.registers.b),
+            0xb9 => format!("cp C({:#04x})", self.registers.c),
+            0xba => format!("cp D({:#04x})", self.registers.d),
+            0xbb => format!("cp E({:#04x})", self.registers.e),
+            0xbc => format!("cp H({:#04x})", self.registers.h),
+            0xbd => format!("cp L({:#04x})", self.registers.l),
+            0xbe => format!("cp (HL({:#06x}))", self.registers.get_hl()),
+            0xbf => format!("cp A({:#04x})", self.registers.a),
+            0xfe => format!("cp {:#04x}", self.load_imm_u8(memory)),
+            0xf0 => format!(
+                "ldh A, ({:#06x})",
+                0xff00 + u16::from(self.load_imm_u8(memory))
+            ),
+            0xf3 => "di".to_string(),
+            0xfb => "ei".to_string(),
+            0x1f => "rra".to_string(),
+            0xe9 => format!("jp (HL({:#06x}))", self.registers.get_hl()),
+            0x90 => format!("sub A, B({:#04x})", self.registers.b),
+            0x91 => format!("sub A, C({:#04x})", self.registers.c),
+            0x92 => format!("sub A, D({:#04x})", self.registers.d),
+            0x93 => format!("sub A, E({:#04x})", self.registers.e),
+            0x94 => format!("sub A, H({:#04x})", self.registers.h),
+            0x95 => format!("sub A, L({:#04x})", self.registers.l),
+            0x96 => format!("sub A, (HL({:#06x}))", self.registers.get_hl()),
+            0x97 => format!("sub A, A({:#04x})", self.registers.a),
+            0xd6 => format!("sub A, {:#04x}", self.load_imm_u8(memory)),
+            0x80 => format!("add A, B({:#04x})", self.registers.b),
+            0x81 => format!("add A, C({:#04x})", self.registers.c),
+            0x82 => format!("add A, D({:#04x})", self.registers.d),
+            0x83 => format!("add A, E({:#04x})", self.registers.e),
+            0x84 => format!("add A, H({:#04x})", self.registers.h),
+            0x85 => format!("add A, L({:#04x})", self.registers.l),
+            0x86 => format!("add A, (HL({:#06x}))", self.registers.get_hl()),
+            0x87 => format!("add A, A({:#04x})", self.registers.a),
+            0xc6 => format!("add A, {:#04x}", self.load_imm_u8(memory)),
+            0xb7 => format!("or A, A({:#04x})", self.registers.a),
+            0xb0 => format!("or A, B({:#04x})", self.registers.b),
+            0xb1 => format!("or A, C({:#04x})", self.registers.c),
+            0xb2 => format!("or A, D({:#04x})", self.registers.d),
+            0xb3 => format!("or A, E({:#04x})", self.registers.e),
+            0xb4 => format!("or A, H({:#04x})", self.registers.h),
+            0xb5 => format!("or A, L({:#04x})", self.registers.l),
+            0xb6 => format!("or A, (HL({:#06x}))", self.registers.get_hl()),
+            0xf6 => format!("or A, {:#04x}", self.load_imm_u8(memory)),
+            0xa7 => format!("and A, A({:#04x})", self.registers.a),
+            0xa0 => format!("and A, B({:#04x})", self.registers.b),
+            0xa1 => format!("and A, C({:#04x})", self.registers.c),
+            0xa2 => format!("and A, D({:#04x})", self.registers.d),
+            0xa3 => format!("and A, E({:#04x})", self.registers.e),
+            0xa4 => format!("and A, H({:#04x})", self.registers.h),
+            0xa5 => format!("and A, L({:#04x})", self.registers.l),
+            0xa6 => format!("and A, (HL({:#06x}))", self.registers.get_hl()),
+            0xe6 => format!("and A, {:#04x}", self.load_imm_u8(memory)),
+            0xaf => format!("xor A, A({:#04x})", self.registers.a),
+            0xa8 => format!("xor A, B({:#04x})", self.registers.b),
+            0xa9 => format!("xor A, C({:#04x})", self.registers.c),
+            0xaa => format!("xor A, D({:#04x})", self.registers.d),
+            0xab => format!("xor A, E({:#04x})", self.registers.e),
+            0xac => format!("xor A, H({:#04x})", self.registers.h),
+            0xad => format!("xor A, L({:#04x})", self.registers.l),
+            0xae => format!("xor A, (HL({:#06x}))", self.registers.get_hl()),
+            0xee => format!("xor A, {:#04x}", self.load_imm_u8(memory)),
+            0xc4 => format!("call NZ, {:#06x}", self.load_imm_u16(memory)),
+            0xcc => format!("call Z, {:#06x}", self.load_imm_u16(memory)),
+            0xd4 => format!("call NC, {:#06x}", self.load_imm_u16(memory)),
+            0xdc => format!("call C, {:#06x}", self.load_imm_u16(memory)),
+            0x8f => format!("adc A, A({:#04x})", self.registers.a),
+            0x88 => format!("adc A, B({:#04x})", self.registers.b),
+            0x89 => format!("adc A, C({:#04x})", self.registers.c),
+            0x8a => format!("adc A, D({:#04x})", self.registers.d),
+            0x8b => format!("adc A, E({:#04x})", self.registers.e),
+            0x8c => format!("adc A, H({:#04x})", self.registers.h),
+            0x8d => format!("adc A, L({:#04x})", self.registers.l),
+            0x8e => format!("adc A, (HL({:#06x}))", self.registers.get_hl()),
+            0xce => format!("adc A, {:#04x}", self.load_imm_u8(memory)),
+            0xc0 => "ret NZ".to_string(),
+            0xc8 => "ret Z".to_string(),
+            0xd0 => "ret NC".to_string(),
+            0xd8 => "ret C".to_string(),
+            0x09 => format!("add HL, BC({:#06x})", self.registers.get_bc()),
+            0x19 => format!("add HL, DE({:#06x})", self.registers.get_de()),
+            0x29 => format!("add HL, HL({:#06x})", self.registers.get_hl()),
+            0x39 => format!("ADD HL, SP({:#06x})", self.registers.sp),
+            0xc2 => format!("jp NZ, {:#06x}", self.load_imm_u16(memory)),
+            0xca => format!("jp Z, {:#06x}", self.load_imm_u16(memory)),
+            0xd2 => format!("jp NC, {:#06x}", self.load_imm_u16(memory)),
+            0xda => format!("JP C, {:#06x}", self.load_imm_u16(memory)),
+            0x68 => format!("ld L, B({:#04x})", self.registers.b),
+            0x69 => format!("ld L, C({:#04x})", self.registers.c),
+            0x6a => format!("ld L, D({:#04x})", self.registers.d),
+            0x6b => format!("ld L, E({:#04x})", self.registers.e),
+            0x6c => format!("ld L, H({:#04x})", self.registers.h),
+            0x6d => format!("ld L, L({:#04x})", self.registers.l),
+            0x6e => format!("ld L, (HL({:#06x}))", self.registers.get_hl()),
             0xcb => self.get_cb_opcode_mnemonic(memory),
-            0x01 | 0x11 | 0x21 | 0x31 => "LD",
-            0x32 => "LDD",
-            0x20 | 0x28 | 0x30 | 0x38 => "JR",
-            0x06 | 0x0e | 0x16 | 0x1e | 0x26 | 0x2e => "LD",
-            0x0a | 0x1a | 0x3e | 0x78...0x7f | 0xfa => "LD",
-            0xe2 => "LDH",
-            0x3c | 0x04 | 0x0c | 0x14 | 0x1c | 0x24 | 0x2c | 0x34 => "INC",
-            0x47 | 0x4F | 0x57 | 0x5F | 0x67 | 0x6F | 0x02 | 0x12 | 0x77 | 0xEA => "LD",
-            0xe0 => "LDH",
-            0xcd => "CALL",
-            0xf5 | 0xc5 | 0xd5 | 0xe5 => "PUSH",
-            0xf1 | 0xc1 | 0xd1 | 0xe1 => "POP",
-            0x17 => "RL",
-            0x3d | 0x05 | 0x0d | 0x15 | 0x1d | 0x25 | 0x2d | 0x35 => "DEC",
-            0x22 => "LDI",
-            0x03 | 0x13 | 0x23 | 0x33 => "INC",
-            0xc9 => "RET",
-            0xb8...0xbf | 0xfe => "CP",
-            0x18 => "JR",
-            0xf0 => "LDH",
-            0x90...0x97 | 0xd6 => "SUB",
-            0x80...0x87 | 0xc6 => "ADD",
-            0xc3 => "JP",
-            0xf3 => "DI",
-            0xfb => "EI",
-            0x2a => "LDI",
-            0xb0...0xb7 | 0xf6 => "OR",
-            0xa0...0xa7 | 0xe6 => "AND",
-            0xa8...0xaf | 0xee => "XOR",
-            0xc4 | 0xcc | 0xd4 | 0xdc => "CALL",
-            0x1f => "RRA",
-            0x88...0x8f | 0xce => "ADC",
-            0xc0 | 0xc8 | 0xd0 | 0xd8 => "RET",
-            0x68...0x6e => "LD",
-            0x9 | 0x19 | 0x29 | 0x39 => "ADD",
-            0xe9 => "JP",
-            0xc2 | 0xca | 0xd2 | 0xda => "JP",
-            _ => "__",
+            _ => "__".to_string(),
         }
     }
 
-    fn get_cb_opcode_mnemonic(&self, memory: &Memory) -> &'static str {
+    fn get_cb_opcode_mnemonic(&self, memory: &Memory) -> String {
         let opcode = memory.get_u8(self.registers.pc + 1);
 
         match opcode {
-            0x40...0x7f => "BIT",
-            0x10...0x17 => "RL",
-            _ => "CB__",
+            0x40...0x7f => "BIT".to_string(),
+            0x10...0x17 => "RL".to_string(),
+            _ => "CB__".to_string(),
         }
     }
 
@@ -204,11 +357,11 @@ impl Cpu {
         }
     }
 
-    fn load_imm_u8(&mut self, memory: &Memory) -> u8 {
+    fn load_imm_u8(&self, memory: &Memory) -> u8 {
         memory.get_u8(self.registers.pc + 1)
     }
 
-    fn load_imm_u16(&mut self, memory: &Memory) -> u16 {
+    fn load_imm_u16(&self, memory: &Memory) -> u16 {
         memory.get_u16(self.registers.pc + 1)
     }
 
