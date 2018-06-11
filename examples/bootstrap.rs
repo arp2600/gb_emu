@@ -20,13 +20,15 @@ fn main() {
 
     emulator.set_serial_io_callback(Box::new(serial_callback));
 
-    // emulator.set_tracing(true);
-    let mut x = 0;
-    loop {
-        for _ in 0..10_000 {
-            emulator.tick();
-            x += 1;
+    for _ in 0..300_000 {
+        emulator.tick();
+        if emulator.get_registers().pc == 51154 {
+            println!("end of test at pc 51154");
+            break;
         }
-        println!("{} instructions", x);
+    }
+    emulator.set_tracing(true);
+    for _ in 0..5 {
+        emulator.tick();
     }
 }

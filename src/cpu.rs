@@ -87,6 +87,7 @@ impl Cpu {
             0x68...0x6e => "LD",
             0x9 | 0x19 | 0x29 | 0x39 => "ADD",
             0xe9 => "JP",
+            0xc2 | 0xca | 0xd2 | 0xda => "JP",
             _ => "__",
         }
     }
@@ -153,6 +154,7 @@ impl Cpu {
             0x68...0x6e => self.ld_l_n(opcode, memory),
             0x9 | 0x19 | 0x29 | 0x39 => self.add_hl_n(opcode),
             0xe9 => self.jp_hl(),
+            0xc2 | 0xca | 0xd2 | 0xda => self.jp_cc_nn(opcode, memory),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -213,6 +215,25 @@ impl Cpu {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn jp_cc_nn(&mut self, opcode: u8, memory: &Memory) {
+        let nn = self.load_imm_u16(memory);
+        let cc = match opcode {
+            0xc2 => !self.registers.flagz(),
+            0xca => self.registers.flagz(),
+            0xd2 => !self.registers.flagc(),
+            0xda => self.registers.flagc(),
+            _ => panic!("Bad opcode {}", opcode),
+        };
+
+        if cc {
+            self.registers.pc = nn;
+            self.cycles += 16;
+        } else {
+            self.registers.pc += 3;
+            self.cycles += 12;
+        }
+    }
 
     fn jp_hl(&mut self) {
         self.registers.pc = self.registers.get_hl();
