@@ -10,6 +10,13 @@ pub struct Cartridge {
 impl Cartridge {
     pub fn from_file(file_path: &str) -> Cartridge {
         let mut full_rom = fs::read(file_path).unwrap();
+        if full_rom.len() / 1024 > 32 {
+            panic!(
+                "Roms size {} KB is not supported yet. Max size is 32 KB",
+                full_rom.len() / 1024
+            );
+        }
+        println!("ROM is {} KB", full_rom.len() / 1024);
         let mut remaining = full_rom.split_off(ROM_BANK_SIZE);
         let mut other_banks = Vec::new();
         while remaining.len() >= ROM_BANK_SIZE {
