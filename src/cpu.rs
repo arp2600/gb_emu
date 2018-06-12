@@ -346,12 +346,16 @@ impl Cpu {
             0x1f => self.rra(),
             0x88...0x8f | 0xce => self.adc_a_n(opcode, memory),
             0xc0 | 0xc8 | 0xd0 | 0xd8 => self.ret_cc(opcode, memory),
-            0x40...0x46 => self.registers.b = self.ld_r1_r2(opcode, memory),
-            0x48...0x4e => self.registers.c = self.ld_r1_r2(opcode, memory),
-            0x50...0x56 => self.registers.d = self.ld_r1_r2(opcode, memory),
-            0x58...0x5e => self.registers.e = self.ld_r1_r2(opcode, memory),
-            0x60...0x66 => self.registers.h = self.ld_r1_r2(opcode, memory),
-            0x68...0x6e => self.registers.l = self.ld_r1_r2(opcode, memory),
+            0x40...0x46 => self.registers.b = self.ld_r1_r2(opcode, memory, (4, 8)),
+            0x48...0x4e => self.registers.c = self.ld_r1_r2(opcode, memory, (4, 8)),
+            0x50...0x56 => self.registers.d = self.ld_r1_r2(opcode, memory, (4, 8)),
+            0x58...0x5e => self.registers.e = self.ld_r1_r2(opcode, memory, (4, 8)),
+            0x60...0x66 => self.registers.h = self.ld_r1_r2(opcode, memory, (4, 8)),
+            0x68...0x6e => self.registers.l = self.ld_r1_r2(opcode, memory, (4, 8)),
+            0x70...0x75 => {
+                let value = self.ld_r1_r2(opcode, memory, (8, 8));
+                memory.set_u8(self.registers.get_hl(), value);
+            }
             0x9 | 0x19 | 0x29 | 0x39 => self.add_hl_n(opcode),
             0xe9 => self.jp_hl(),
             0xc2 | 0xca | 0xd2 | 0xda => self.jp_cc_nn(opcode, memory),
@@ -437,14 +441,14 @@ impl Cpu {
         }
     }
 
-    fn ld_r1_r2(&mut self, opcode: u8, memory: &mut Memory) -> u8 {
+    fn ld_r1_r2(&mut self, opcode: u8, memory: &mut Memory, cycles: (u64, u64)) -> u8 {
         let reg_index = opcode & 0b0000_0111;
         let value = self.get_source_u8(reg_index, memory);
 
         self.registers.pc += 1;
         match reg_index {
-            0x6 => self.cycles += 8,
-            _ => self.cycles += 4,
+            0x6 => self.cycles += cycles.1,
+            _ => self.cycles += cycles.0,
         }
 
         value
