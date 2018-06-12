@@ -14,7 +14,8 @@ pub struct Memory {
     lcd_registers: LCDRegisters,
     interrupt_enable_register: u8,
     serial_io_callback: Option<Box<FnMut(u8)>>,
-    serial_data: u8,
+    last_serial_byte: u8,
+    serial_data: Vec<u8>,
 }
 
 impl Memory {
@@ -36,8 +37,13 @@ impl Memory {
             oam: [0; OAM_SIZE],
             interrupt_enable_register: 0,
             serial_io_callback: None,
-            serial_data: 0,
+            last_serial_byte: 0,
+            serial_data: Vec::new(),
         }
+    }
+
+    pub fn get_serial_data(&self) -> &[u8] {
+        &self.serial_data
     }
 
     pub fn set_serial_io_callback(&mut self, callback: Box<FnMut(u8)>) {
@@ -84,9 +90,12 @@ impl Memory {
 
     fn set_io(&mut self, index: usize, value: u8) {
         match index {
-            0xff01 => self.serial_data = value,
+            0xff01 => {
+                self.last_serial_byte = value;
+                self.serial_data.push(value);
+            }
             0xff02 => match &mut self.serial_io_callback {
-                Some(x) => x(self.serial_data),
+                Some(x) => x(self.last_serial_byte),
                 None => (),
             },
             0xff40 => self.lcd_registers.lcdc = value,
@@ -120,7 +129,7 @@ impl Memory {
         match index {
             0xff01 => {
                 println!("get SB");
-                self.serial_data
+                self.last_serial_byte
             }
             0xff02 => {
                 println!("get SC");
