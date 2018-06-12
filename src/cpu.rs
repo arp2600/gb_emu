@@ -265,6 +265,14 @@ impl Cpu {
             0x6c => format!("ld L, H({:#04x})", regs.h),
             0x6d => format!("ld L, L({:#04x})", regs.l),
             0x6e => format!("ld L, (HL({:#06x}))", regs.get_hl()),
+            // LD (nn),SP
+            0x08 => format!(
+                "ld ({:#06x}), SP({:#06x})",
+                self.load_imm_u16(memory),
+                regs.sp
+            ),
+            // LD SP,HL
+            0xf9 => format!("ld SP({:#06x}), HL({:#06x})", regs.sp, regs.get_hl()),
             0xcb => self.get_cb_opcode_mnemonic(memory),
             _ => "__".to_string(),
         }
@@ -293,6 +301,24 @@ impl Cpu {
             0x1c => format!("rr H({:#04x})", self.registers.h),
             0x1d => format!("rr L({:#04x})", self.registers.l),
             0x1e => format!("rr (HL({:#06x}))", self.registers.get_hl()),
+            // SRL n
+            0x3f => format!("srl A({:#04x})", self.registers.a),
+            0x38 => format!("srl B({:#04x})", self.registers.b),
+            0x39 => format!("srl C({:#04x})", self.registers.c),
+            0x3a => format!("srl D({:#04x})", self.registers.d),
+            0x3b => format!("srl E({:#04x})", self.registers.e),
+            0x3c => format!("srl H({:#04x})", self.registers.h),
+            0x3d => format!("srl L({:#04x})", self.registers.l),
+            0x3e => format!("srl (HL({:#06x}))", self.registers.get_hl()),
+            // SWAP n
+            0x37 => format!("swap A({:#04x})", self.registers.a),
+            0x30 => format!("swap B({:#04x})", self.registers.b),
+            0x31 => format!("swap C({:#04x})", self.registers.c),
+            0x32 => format!("swap D({:#04x})", self.registers.d),
+            0x33 => format!("swap E({:#04x})", self.registers.e),
+            0x34 => format!("swap H({:#04x})", self.registers.h),
+            0x35 => format!("swap L({:#04x})", self.registers.l),
+            0x36 => format!("swap (HL({:#04x}))", self.registers.get_hl()),
             _ => "CB__".to_string(),
         }
     }
@@ -377,6 +403,8 @@ impl Cpu {
             0x9 | 0x19 | 0x29 | 0x39 => self.add_hl_n(opcode),
             0xe9 => self.jp_hl(),
             0xc2 | 0xca | 0xd2 | 0xda => self.jp_cc_nn(opcode, memory),
+            0x08 => self.ld_nn_sp(memory),
+            0xf9 => self.ld_sp_hl(),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -389,6 +417,8 @@ impl Cpu {
             0x40...0x7f => self.bit_b_r(opcode, memory),
             0x10...0x17 => self.rl_n(opcode, memory),
             0x18...0x1f => self.rr_n(opcode, memory),
+            0x38...0x3f => self.srl_n(opcode, memory),
+            0x30...0x37 => self.swap_n(opcode, memory),
             _ => panic!("Instruction 0xcb{:02x} not implemented", opcode),
         }
     }
@@ -438,6 +468,52 @@ impl Cpu {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn ld_sp_hl(&mut self) {
+        self.registers.sp = self.registers.get_hl();
+        self.registers.pc += 1;
+        self.cycles += 8;
+    }
+
+    fn swap_n(&mut self, opcode: u8, memory: &mut Memory) {
+        let reg_index = opcode & 0b0111;
+        let source = self.get_source_u8(reg_index, memory);
+        let result = (source >> 4) | (source << 4);
+
+        self.registers.clear_flags();
+        self.registers.set_flagz(result == 0);
+
+        self.registers.pc += 1;
+        match opcode {
+            0x16 => self.cycles += 16,
+            _ => self.cycles += 8,
+        }
+    }
+
+    fn srl_n(&mut self, opcode: u8, memory: &mut Memory) {
+        let reg_index = opcode & 0b0111;
+        let source = self.get_source_u8(reg_index, memory);
+        let result = source >> 1;
+
+        self.registers.clear_flags();
+        self.registers.set_flagz(result == 0);
+        self.registers.set_flagc((source & 0b0000_0001) != 0);
+
+        self.set_dest_u8(reg_index, result, memory);
+        self.registers.pc += 1;
+        match opcode {
+            0x3e => self.cycles += 16,
+            _ => self.cycles += 8,
+        }
+    }
+
+    fn ld_nn_sp(&mut self, memory: &mut Memory) {
+        let nn = self.load_imm_u16(memory);
+        memory.set_u16(nn, self.registers.sp);
+
+        self.registers.pc += 3;
+        self.cycles += 20;
+    }
 
     fn rr_n(&mut self, opcode: u8, memory: &mut Memory) {
         let reg_index = opcode & 0b0000_0111;
