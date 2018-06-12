@@ -37,17 +37,17 @@ impl Cpu {
 
     pub fn tick(&mut self, memory: &mut Memory, tracing: bool) {
         self.instruction_counter += 1;
-        let mnemonic = if tracing {
-            Some(self.get_opcode_mnemonic(memory))
-        } else {
-            None
-        };
-        let opcode = memory.get_u8(self.registers.pc);
-
-        self.fetch_and_execute(memory);
 
         if tracing {
-            println!("{:020}|  {:#04x}", mnemonic.unwrap(), opcode);
+            let mnemonic = self.get_opcode_mnemonic(memory);
+            let opcode = memory.get_u8(self.registers.pc);
+            let pc = self.registers.pc;
+
+            self.fetch_and_execute(memory);
+
+            println!("{:#06x}  {:020}|  {:#04x}", pc, mnemonic, opcode);
+        } else {
+            self.fetch_and_execute(memory);
         }
     }
 
