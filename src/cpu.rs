@@ -233,6 +233,42 @@ impl Cpu {
             0xca => format!("jp Z, {:#06x}", self.load_imm_u16(memory)),
             0xd2 => format!("jp NC, {:#06x}", self.load_imm_u16(memory)),
             0xda => format!("JP C, {:#06x}", self.load_imm_u16(memory)),
+            // LD r1,r2
+            0x40 => format!("ld B, B({:#04x})", self.registers.b),
+            0x41 => format!("ld B, C({:#04x})", self.registers.c),
+            0x42 => format!("ld B, D({:#04x})", self.registers.d),
+            0x43 => format!("ld B, E({:#04x})", self.registers.e),
+            0x44 => format!("ld B, H({:#04x})", self.registers.h),
+            0x45 => format!("ld B, L({:#04x})", self.registers.l),
+            0x46 => format!("ld B, (HL({:#06x}))", self.registers.get_hl()),
+            0x48 => format!("ld C, B({:#04x})", self.registers.b),
+            0x49 => format!("ld C, C({:#04x})", self.registers.c),
+            0x4a => format!("ld C, D({:#04x})", self.registers.d),
+            0x4b => format!("ld C, E({:#04x})", self.registers.e),
+            0x4c => format!("ld C, H({:#04x})", self.registers.h),
+            0x4d => format!("ld C, L({:#04x})", self.registers.l),
+            0x4e => format!("ld C, (HL({:#06x}))", self.registers.get_hl()),
+            0x50 => format!("ld D, B({:#04x})", self.registers.b),
+            0x51 => format!("ld D, C({:#04x})", self.registers.c),
+            0x52 => format!("ld D, D({:#04x})", self.registers.d),
+            0x53 => format!("ld D, E({:#04x})", self.registers.e),
+            0x54 => format!("ld D, H({:#04x})", self.registers.h),
+            0x55 => format!("ld D, L({:#04x})", self.registers.l),
+            0x56 => format!("ld D, (HL({:#06x}))", self.registers.get_hl()),
+            0x58 => format!("ld E, B({:#04x})", self.registers.b),
+            0x59 => format!("ld E, C({:#04x})", self.registers.c),
+            0x5a => format!("ld E, D({:#04x})", self.registers.d),
+            0x5b => format!("ld E, E({:#04x})", self.registers.e),
+            0x5c => format!("ld E, H({:#04x})", self.registers.h),
+            0x5d => format!("ld E, L({:#04x})", self.registers.l),
+            0x5e => format!("ld E, (HL({:#06x}))", self.registers.get_hl()),
+            0x60 => format!("ld H, B({:#04x})", self.registers.b),
+            0x61 => format!("ld H, C({:#04x})", self.registers.c),
+            0x62 => format!("ld H, D({:#04x})", self.registers.d),
+            0x63 => format!("ld H, E({:#04x})", self.registers.e),
+            0x64 => format!("ld H, H({:#04x})", self.registers.h),
+            0x65 => format!("ld H, L({:#04x})", self.registers.l),
+            0x66 => format!("ld H, (HL({:#06x}))", self.registers.get_hl()),
             0x68 => format!("ld L, B({:#04x})", self.registers.b),
             0x69 => format!("ld L, C({:#04x})", self.registers.c),
             0x6a => format!("ld L, D({:#04x})", self.registers.d),
@@ -304,7 +340,12 @@ impl Cpu {
             0x1f => self.rra(),
             0x88...0x8f | 0xce => self.adc_a_n(opcode, memory),
             0xc0 | 0xc8 | 0xd0 | 0xd8 => self.ret_cc(opcode, memory),
-            0x68...0x6e => self.ld_l_n(opcode, memory),
+            0x40...0x46 => self.registers.b = self.ld_r1_r2(opcode, memory),
+            0x48...0x4e => self.registers.c = self.ld_r1_r2(opcode, memory),
+            0x50...0x56 => self.registers.d = self.ld_r1_r2(opcode, memory),
+            0x58...0x5e => self.registers.e = self.ld_r1_r2(opcode, memory),
+            0x60...0x66 => self.registers.h = self.ld_r1_r2(opcode, memory),
+            0x68...0x6e => self.registers.l = self.ld_r1_r2(opcode, memory),
             0x9 | 0x19 | 0x29 | 0x39 => self.add_hl_n(opcode),
             0xe9 => self.jp_hl(),
             0xc2 | 0xca | 0xd2 | 0xda => self.jp_cc_nn(opcode, memory),
@@ -369,6 +410,19 @@ impl Cpu {
                          Opcodes
     ************************************************************/
 
+    fn ld_r1_r2(&mut self, opcode: u8, memory: &mut Memory) -> u8 {
+        let reg_index = opcode & 0b0000_0111;
+        let value = self.get_source_u8(reg_index, memory);
+
+        self.registers.pc += 1;
+        match reg_index {
+            0x6 => self.cycles += 8,
+            _ => self.cycles += 4,
+        }
+
+        value
+    }
+
     fn jp_cc_nn(&mut self, opcode: u8, memory: &Memory) {
         let nn = self.load_imm_u16(memory);
         let cc = match opcode {
@@ -413,22 +467,6 @@ impl Cpu {
 
         self.registers.pc += 1;
         self.cycles += 8;
-    }
-
-    fn ld_l_n(&mut self, opcode: u8, memory: &mut Memory) {
-        self.registers.l = match opcode {
-            0x68...0x6e => {
-                let reg_index = opcode & 0b0000_0111;
-                self.get_source_u8(reg_index, memory)
-            }
-            _ => panic!("Bad opcode {}", opcode),
-        };
-
-        self.registers.pc += 1;
-        match opcode {
-            0x6e => self.cycles += 8,
-            _ => self.cycles += 4,
-        }
     }
 
     fn ret_cc(&mut self, opcode: u8, memory: &mut Memory) {
