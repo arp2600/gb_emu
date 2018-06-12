@@ -275,7 +275,24 @@ impl Cpu {
 
         match opcode {
             0x40...0x7f => "BIT".to_string(),
-            0x10...0x17 => "RL".to_string(),
+            // RL n
+            0x17 => format!("rl A({:#04x})", self.registers.a),
+            0x10 => format!("rl B({:#04x})", self.registers.b),
+            0x11 => format!("rl C({:#04x})", self.registers.c),
+            0x12 => format!("rl D({:#04x})", self.registers.d),
+            0x13 => format!("rl E({:#04x})", self.registers.e),
+            0x14 => format!("rl H({:#04x})", self.registers.h),
+            0x15 => format!("rl L({:#04x})", self.registers.l),
+            0x16 => format!("rl (HL({:#06x}))", self.registers.get_hl()),
+            // RR n
+            0x1f => format!("rr A({:#04x})", self.registers.a),
+            0x18 => format!("rr B({:#04x})", self.registers.b),
+            0x19 => format!("rr C({:#04x})", self.registers.c),
+            0x1a => format!("rr D({:#04x})", self.registers.d),
+            0x1b => format!("rr E({:#04x})", self.registers.e),
+            0x1c => format!("rr H({:#04x})", self.registers.h),
+            0x1d => format!("rr L({:#04x})", self.registers.l),
+            0x1e => format!("rr (HL({:#06x}))", self.registers.get_hl()),
             _ => "CB__".to_string(),
         }
     }
@@ -349,6 +366,7 @@ impl Cpu {
         match opcode {
             0x40...0x7f => self.bit_b_r(opcode, memory),
             0x10...0x17 => self.rl_n(opcode, memory),
+            0x18...0x1f => self.rr_n(opcode, memory),
             _ => panic!("Instruction 0xcb{:02x} not implemented", opcode),
         }
     }
@@ -398,6 +416,26 @@ impl Cpu {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn rr_n(&mut self, opcode: u8, memory: &mut Memory) {
+        let reg_index = opcode & 0b0000_0111;
+        let source = self.get_source_u8(reg_index, memory);
+        let mut value = source >> 1;
+        if self.registers.flagc() {
+            value += 0b1000_0000;
+        };
+
+        self.registers.clear_flags();
+        self.registers.set_flagz(value == 0);
+        self.registers.set_flagc((source & 0b0000_0001) != 0);
+
+        self.set_dest_u8(reg_index, value, memory);
+        self.registers.pc += 1;
+        match opcode {
+            0x1e => self.cycles += 16,
+            _ => self.cycles += 8,
+        }
+    }
 
     fn ld_r1_r2(&mut self, opcode: u8, memory: &mut Memory) -> u8 {
         let reg_index = opcode & 0b0000_0111;
