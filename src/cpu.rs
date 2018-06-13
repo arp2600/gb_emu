@@ -43,7 +43,7 @@ impl Cpu {
                         $diffs.push_str(&format!($fmt_str, $b));
                         $diffs.push_str(" ");
                     }
-                }
+                };
             }
 
             let mut diffs = String::new();
@@ -61,10 +61,12 @@ impl Cpu {
                 // Ignore screen update
                 0xc7ee...0xc7f7 => (),
                 _ => {
-                    println!("{:#06x}  {:02x}  {:020}  #  {}", pc, opcode, mnemonic, diffs);
+                    println!(
+                        "{:#06x}  {:02x}  {:020}  #  {}",
+                        pc, opcode, mnemonic, diffs
+                    );
                 }
             }
-
         } else {
             self.fetch_and_execute(memory);
         }
@@ -691,7 +693,6 @@ impl Cpu {
             0xdc => self.registers.flagc(),
             _ => panic!("Bad opcode {}", opcode),
         };
-
 
         if cc {
             let nn = self.load_imm_u16(memory);
