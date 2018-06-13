@@ -39,13 +39,41 @@ impl Cpu {
         self.instruction_counter += 1;
 
         if tracing {
+            let registers = self.registers.clone();
             let mnemonic = self.get_opcode_mnemonic(memory);
             let opcode = memory.get_u8(self.registers.pc);
             let pc = self.registers.pc;
 
             self.fetch_and_execute(memory);
 
-            println!("{:#06x}  {:020}|  {:#04x}", pc, mnemonic, opcode);
+            macro_rules! diff_regs {
+                ($a:expr, $b:expr, $diffs:ident, $fmt_str:tt) => {
+                    if $a != $b {
+                        $diffs.push_str(&format!($fmt_str, $b));
+                        $diffs.push_str(" ");
+                    }
+                }
+            }
+
+            let mut diffs = String::new();
+            diff_regs!(registers.a, self.registers.a, diffs, "A={:#04x}");
+            diff_regs!(registers.b, self.registers.b, diffs, "B={:#04x}");
+            diff_regs!(registers.c, self.registers.c, diffs, "C={:#04x}");
+            diff_regs!(registers.d, self.registers.d, diffs, "D={:#04x}");
+            diff_regs!(registers.e, self.registers.e, diffs, "E={:#04x}");
+            diff_regs!(registers.f, self.registers.f, diffs, "F={:#04x}");
+            diff_regs!(registers.h, self.registers.h, diffs, "H={:#04x}");
+            diff_regs!(registers.l, self.registers.l, diffs, "L={:#04x}");
+            diff_regs!(registers.sp, self.registers.sp, diffs, "SP={:#06x}");
+
+            match registers.pc {
+                // Ignore screen update
+                0xc7ee...0xc7f7 => (),
+                _ => {
+                    println!("{:#06x}  {:020}  #  {}", pc, mnemonic, diffs);
+                }
+            }
+
         } else {
             self.fetch_and_execute(memory);
         }
@@ -79,12 +107,12 @@ impl Cpu {
             0x24 => format!("inc H({:#04x})", regs.h),
             0x2c => format!("inc L({:#04x})", regs.l),
             0x34 => format!("inc (HL({:#04x}))", regs.get_hl()),
-            0x47 => format!("ld B, {:#04x}", regs.a),
-            0x4f => format!("ld C, {:#04x}", regs.a),
-            0x57 => format!("ld D, {:#04x}", regs.a),
-            0x5f => format!("ld E, {:#04x}", regs.a),
-            0x67 => format!("ld H, {:#04x}", regs.a),
-            0x6f => format!("ld L, {:#04x}", regs.a),
+            0x47 => format!("ld B, A({:#04x})", regs.a),
+            0x4f => format!("ld C, A({:#04x})", regs.a),
+            0x57 => format!("ld D, A({:#04x})", regs.a),
+            0x5f => format!("ld E, A({:#04x})", regs.a),
+            0x67 => format!("ld H, A({:#04x})", regs.a),
+            0x6f => format!("ld L, A({:#04x})", regs.a),
             0x02 => format!("ld (BC), {:#04x}", regs.a),
             0x12 => format!("ld (DE), {:#04x}", regs.a),
             0x77 => format!("ld (HL), {:#04x}", regs.a),
@@ -135,15 +163,15 @@ impl Cpu {
             0x23 => "inc HL".to_string(),
             0x33 => "inc SP".to_string(),
             0xc9 => "ret".to_string(),
-            0xb8 => format!("cp B({:#04x})", regs.b),
-            0xb9 => format!("cp C({:#04x})", regs.c),
-            0xba => format!("cp D({:#04x})", regs.d),
-            0xbb => format!("cp E({:#04x})", regs.e),
-            0xbc => format!("cp H({:#04x})", regs.h),
-            0xbd => format!("cp L({:#04x})", regs.l),
-            0xbe => format!("cp (HL({:#06x}))", regs.get_hl()),
-            0xbf => format!("cp A({:#04x})", regs.a),
-            0xfe => format!("cp {:#04x}", self.load_imm_u8(memory)),
+            0xb8 => format!("cp A({:#04x}) B({:#04x})", regs.a, regs.b),
+            0xb9 => format!("cp A({:#04x}) C({:#04x})", regs.a, regs.c),
+            0xba => format!("cp A({:#04x}) D({:#04x})", regs.a, regs.d),
+            0xbb => format!("cp A({:#04x}) E({:#04x})", regs.a, regs.e),
+            0xbc => format!("cp A({:#04x}) H({:#04x})", regs.a, regs.h),
+            0xbd => format!("cp A({:#04x}) L({:#04x})", regs.a, regs.l),
+            0xbe => format!("cp A({:#04x}) (HL({:#06x}))", regs.a, regs.get_hl()),
+            0xbf => format!("cp A({:#04x}) A({:#04x})", regs.a, regs.a),
+            0xfe => format!("cp A({:#04x}) {:#04x}", regs.a, self.load_imm_u8(memory)),
             0xf0 => format!(
                 "ldh A, ({:#06x})",
                 0xff00 + u16::from(self.load_imm_u8(memory))

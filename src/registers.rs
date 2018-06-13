@@ -27,7 +27,7 @@ macro_rules! create_get_set_flag {
     };
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Registers {
     pub a: u8,
     pub b: u8,

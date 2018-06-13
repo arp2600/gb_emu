@@ -8,11 +8,12 @@ fn main() {
     let cartridge_rom = "blargg_test_roms/cpu_instrs/individual/06-ld_r_r.gb";
     let mut emulator = Emulator::new(None, cartridge_rom);
 
+    emulator.set_tracing(true);
     for _ in 0..3_000_000 {
         emulator.tick();
     }
 
     let serial_data = emulator.get_serial_data();
     let serial_string = str::from_utf8(serial_data).unwrap();
-    assert!(serial_string.find("Passed").is_some());
+    println!("{}", serial_string);
 }
