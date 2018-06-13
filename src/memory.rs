@@ -19,16 +19,10 @@ pub struct Memory {
 }
 
 impl Memory {
-    pub fn new(boot_rom: Option<Vec<u8>>, cartridge: Cartridge) -> Memory {
-        let boot_rom = match boot_rom {
-            Some(x) => x,
-            None => Vec::new(),
-        };
-        let boot_rom_enabled = !boot_rom.is_empty();
-
+    pub fn new(boot_rom: Vec<u8>, cartridge: Cartridge) -> Memory {
         Memory {
             boot_rom,
-            boot_rom_enabled,
+            boot_rom_enabled: true,
             cartridge,
             hram: [0; HRAM_SIZE],
             lcd_registers: LCDRegisters::new(),
@@ -48,40 +42,6 @@ impl Memory {
 
     pub fn set_serial_io_callback(&mut self, callback: Box<FnMut(u8)>) {
         self.serial_io_callback = Some(callback);
-    }
-
-    pub fn skip_boot_rom(&mut self) {
-        self.set_u8(0xff05, 0x00);
-        self.set_u8(0xff06, 0x00);
-        self.set_u8(0xff07, 0x00);
-        self.set_u8(0xff10, 0x80);
-        self.set_u8(0xff11, 0xbf);
-        self.set_u8(0xff12, 0xf3);
-        self.set_u8(0xff14, 0xbf);
-        self.set_u8(0xff16, 0x3f);
-        self.set_u8(0xff17, 0x00);
-        self.set_u8(0xff19, 0xbf);
-        self.set_u8(0xff1a, 0x7f);
-        self.set_u8(0xff1b, 0xff);
-        self.set_u8(0xff1c, 0x9f);
-        self.set_u8(0xff1e, 0xbf);
-        self.set_u8(0xff20, 0xff);
-        self.set_u8(0xff21, 0x00);
-        self.set_u8(0xff22, 0x00);
-        self.set_u8(0xff23, 0xbf);
-        self.set_u8(0xff24, 0x77);
-        self.set_u8(0xff25, 0xf3);
-        self.set_u8(0xff26, 0xf1);
-        self.set_u8(0xff40, 0x91);
-        self.set_u8(0xff42, 0x00);
-        self.set_u8(0xff43, 0x00);
-        self.set_u8(0xff45, 0x00);
-        self.set_u8(0xff47, 0xfc);
-        self.set_u8(0xff48, 0xff);
-        self.set_u8(0xff49, 0xff);
-        self.set_u8(0xff4a, 0x00);
-        self.set_u8(0xff4b, 0x00);
-        self.set_u8(0xffff, 0x00);
     }
 
     pub fn is_boot_rom_enabled(&self) -> bool {

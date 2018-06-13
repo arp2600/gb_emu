@@ -22,18 +22,16 @@ pub struct Emulator {
 
 impl Emulator {
     pub fn new(boot_rom_path: Option<&str>, cartridge_rom_path: &str) -> Emulator {
-        let mut cpu = Cpu::new();
+        let cpu = Cpu::new();
         let cartridge = Cartridge::from_file(cartridge_rom_path);
-
-        let memory = if let Some(x) = boot_rom_path {
-            let boot_rom = fs::read(x).ok();
-            Memory::new(boot_rom, cartridge)
-        } else {
-            cpu.skip_boot_rom();
-            let mut m = Memory::new(None, cartridge);
-            m.skip_boot_rom();
-            m
+        let boot_rom = match boot_rom_path {
+            Some(x) => fs::read(x).unwrap(),
+            None => {
+                let x = include_bytes!("../resources/dummy_boot_rom.gb");
+                x.to_vec()
+            }
         };
+        let memory = Memory::new(boot_rom, cartridge);
         let lcd = LCD::new();
 
         Emulator {

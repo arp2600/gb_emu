@@ -18,15 +18,6 @@ impl Cpu {
         }
     }
 
-    pub fn skip_boot_rom(&mut self) {
-        self.registers.set_af(0x01b0);
-        self.registers.set_bc(0x0013);
-        self.registers.set_de(0x00d8);
-        self.registers.set_hl(0x014d);
-        self.registers.sp = 0xfffe;
-        self.registers.pc = 0x0100;
-    }
-
     pub fn get_cycles(&self) -> u64 {
         self.cycles
     }
@@ -70,7 +61,7 @@ impl Cpu {
                 // Ignore screen update
                 0xc7ee...0xc7f7 => (),
                 _ => {
-                    println!("{:#06x}  {:020}  #  {}", pc, mnemonic, diffs);
+                    println!("{:#06x}  {:02x}  {:020}  #  {}", pc, opcode, mnemonic, diffs);
                 }
             }
 

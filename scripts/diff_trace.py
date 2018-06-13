@@ -67,7 +67,7 @@ class PrintDiff:
         else:
             colour = 'red'
             diffchar = '*'
-        cprint("{:<6}|{}|    {:<50}|    {}".format(line_no, diffchar, line1,
+        cprint("{:<6}|{}|    {:<60}|    {}".format(line_no, diffchar, line1,
                                                    line2), colour)
 
 
