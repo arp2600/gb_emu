@@ -1067,19 +1067,19 @@ impl Cpu {
         match opcode {
             0x03 => {
                 let source = self.registers.get_bc();
-                self.registers.set_bc(source + 1);
+                self.registers.set_bc(source.wrapping_add(1));
             }
             0x13 => {
                 let source = self.registers.get_de();
-                self.registers.set_de(source + 1);
+                self.registers.set_de(source.wrapping_add(1));
             }
             0x23 => {
                 let source = self.registers.get_hl();
-                self.registers.set_hl(source + 1);
+                self.registers.set_hl(source.wrapping_add(1));
             }
             0x33 => {
                 let source = self.registers.sp;
-                self.registers.sp = source + 1;
+                self.registers.sp = source.wrapping_add(1);
             }
             _ => panic!("Bad opcode {}", opcode),
         };
