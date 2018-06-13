@@ -675,7 +675,7 @@ impl Cpu {
 
         self.registers.clear_flags();
         self.registers.set_flagz(result == 0);
-        self.registers.set_flagz(a & 0b1 == 1);
+        self.registers.set_flagc(a & 0b1 == 1);
 
         self.registers.a = result;
 
@@ -692,15 +692,15 @@ impl Cpu {
             _ => panic!("Bad opcode {}", opcode),
         };
 
-        self.registers.pc += 3;
 
         if cc {
             let nn = self.load_imm_u16(memory);
-            memory.set_u16(self.registers.sp - 2, self.registers.pc);
+            memory.set_u16(self.registers.sp - 2, self.registers.pc + 3);
             self.registers.sp -= 2;
             self.registers.pc = nn;
             self.cycles += 24;
         } else {
+            self.registers.pc += 3;
             self.cycles += 12;
         }
     }
@@ -855,9 +855,10 @@ impl Cpu {
         };
 
         let a = self.registers.a;
-        self.registers.a = a.wrapping_sub(n);
+        let result = a.wrapping_sub(n);
+        self.registers.a = result;
 
-        self.registers.set_flagz(a <= n);
+        self.registers.set_flagz(result == 0);
         self.registers.set_flagn(true);
         self.registers.set_flagh(a & 0xf < n & 0xf);
         self.registers.set_flagc(a < n);
