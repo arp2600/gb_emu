@@ -553,7 +553,7 @@ impl Cpu {
 
         self.registers.clear_flags();
         self.registers.set_flagz(result == 0);
-        self.registers.set_flagz(source & 0b1000_000 != 0);
+        self.registers.set_flagz(source & 0b1000_0000 != 0);
 
         self.registers.pc += 1;
         match opcode {
@@ -667,7 +667,7 @@ impl Cpu {
         let mut correction = 0;
 
         if flagh || (!flagn && a & 0x0f > 0x09) {
-            correction = 0x06;
+            correction |= 0x06;
         }
         if flagc || (!flagn && a > 0x99) {
             correction |= 0x60;
@@ -690,7 +690,7 @@ impl Cpu {
     }
 
     fn ldhl_sp_n(&mut self, memory: &Memory) {
-        let n = self.load_imm_u8(memory) as u16;
+        let n = u16::from(self.load_imm_u8(memory));
         let sp = self.registers.sp;
 
         self.registers.clear_flags();
@@ -703,7 +703,7 @@ impl Cpu {
         } else {
             let result = sp.wrapping_add(n);
             self.registers.set_flagc(sp.checked_add(n).is_none());
-            self.registers.set_flagh((sp & 0xfff + n & 0xfff) > 0xfff);
+            self.registers.set_flagh((sp & 0xfff) + (n & 0xfff) > 0xfff);
             self.registers.set_hl(result);
         };
 
@@ -712,7 +712,7 @@ impl Cpu {
     }
 
     fn add_sp_n(&mut self, memory: &Memory) {
-        let n = self.load_imm_u8(memory) as u16;
+        let n = u16::from(self.load_imm_u8(memory));
         let sp = self.registers.sp;
 
         self.registers.clear_flags();
@@ -725,7 +725,7 @@ impl Cpu {
         } else {
             let result = sp.wrapping_add(n);
             self.registers.set_flagc(sp.checked_add(n).is_none());
-            self.registers.set_flagh((sp & 0xfff + n & 0xfff) > 0xfff);
+            self.registers.set_flagh((sp & 0xfff) + (n & 0xfff) > 0xfff);
             self.registers.sp = result;
         };
 
