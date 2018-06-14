@@ -42,7 +42,16 @@ pub struct Registers {
 }
 
 impl Registers {
-    create_get_set!(get_af, set_af, a, f);
+    pub fn get_af(&self) -> u16 {
+        u16::from(self.a) << 8 | u16::from(self.f)
+    }
+
+    // set_af is a special case as lower nibble of f is not set
+    pub fn set_af(&mut self, value: u16) {
+        self.a = (value >> 8) as u8;
+        self.f = (value & 0xf0) as u8;
+    }
+
     create_get_set!(get_bc, set_bc, b, c);
     create_get_set!(get_de, set_de, d, e);
     create_get_set!(get_hl, set_hl, h, l);
