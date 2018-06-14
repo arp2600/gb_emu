@@ -59,7 +59,7 @@ impl Cpu {
 
             match registers.pc {
                 // Ignore screen update
-                0xc7ee...0xc7f7 => (),
+                0xc360...0xc369 => (),
                 _ => {
                     println!(
                         "{:#06x}  {:02x}  {:020}  #  {}",
@@ -133,14 +133,14 @@ impl Cpu {
             0xfa => format!("ld A, ({:#06x})", self.load_imm_u16(memory)),
             0xe2 => format!("ld (C), A({:#04x})", regs.a),
             0xcd => format!("call {:#06x}", self.load_imm_u16(memory)),
-            0xf5 => "push AF".to_string(),
-            0xc5 => "push BC".to_string(),
-            0xd5 => "push DE".to_string(),
-            0xe5 => "push HL".to_string(),
-            0xf1 => "pop AF".to_string(),
-            0xc1 => "pop BC".to_string(),
-            0xd1 => "pop DE".to_string(),
-            0xe1 => "pop HL".to_string(),
+            0xf5 => format!("push AF({:#06x})", regs.get_af()),
+            0xc5 => format!("push BC({:#06x})", regs.get_bc()),
+            0xd5 => format!("push DE({:#06x})", regs.get_de()),
+            0xe5 => format!("push HL({:#06x})", regs.get_hl()),
+            0xf1 => format!("pop AF({:#06x})", regs.get_af()),
+            0xc1 => format!("pop BC({:#06x})", regs.get_bc()),
+            0xd1 => format!("pop DE({:#06x})", regs.get_de()),
+            0xe1 => format!("pop HL({:#06x})", regs.get_hl()),
             0x17 => "rla".to_string(),
             0x3d => "dec A".to_string(),
             0x05 => "dec B".to_string(),
@@ -294,6 +294,8 @@ impl Cpu {
             ),
             // LD SP,HL
             0xf9 => format!("ld SP({:#06x}), HL({:#06x})", regs.sp, regs.get_hl()),
+            // LDD A,(HL)
+            0x3a => format!("ldd A({:#04x}), HL({:#06x})", regs.a, regs.get_hl()),
             0xcb => self.get_cb_opcode_mnemonic(memory),
             _ => "__".to_string(),
         }
@@ -385,7 +387,6 @@ impl Cpu {
             0xc3 => self.jp_nn(memory),
             0xf3 => self.set_interrupts(false),
             0xfb => self.set_interrupts(true),
-            0x2a => self.ldi_a_hl(memory),
             0xb0...0xb7 | 0xf6 => self.or_n(opcode, memory),
             0xa0...0xa7 | 0xe6 => self.and_n(opcode, memory),
             0xa8...0xaf | 0xee => self.xor_n(opcode, memory),
@@ -426,6 +427,14 @@ impl Cpu {
             0xc2 | 0xca | 0xd2 | 0xda => self.jp_cc_nn(opcode, memory),
             0x08 => self.ld_nn_sp(memory),
             0xf9 => self.ld_sp_hl(),
+            0x2a => {
+                let address = self.registers.hli();
+                self.ld_a_mem(memory, address);
+            }
+            0x3a => {
+                let address = self.registers.hld();
+                self.ld_a_mem(memory, address);
+            }
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -489,6 +498,14 @@ impl Cpu {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn ld_a_mem(&mut self, memory: &mut Memory, address: u16) {
+        let v = memory.get_u8(address);
+        self.registers.a = v;
+
+        self.registers.pc += 1;
+        self.cycles += 8;
+    }
 
     fn ld_sp_hl(&mut self) {
         self.registers.sp = self.registers.get_hl();
@@ -783,15 +800,6 @@ impl Cpu {
             0xb6 | 0xf6 => self.cycles += 8,
             _ => self.cycles += 4,
         }
-    }
-
-    fn ldi_a_hl(&mut self, memory: &Memory) {
-        let hl = self.registers.hli();
-        let v = memory.get_u8(hl);
-        self.registers.a = v;
-
-        self.registers.pc += 1;
-        self.cycles += 8;
     }
 
     fn set_interrupts(&mut self, state: bool) {
