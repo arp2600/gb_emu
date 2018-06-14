@@ -296,6 +296,11 @@ impl Cpu {
             0xf9 => format!("ld SP({:#06x}), HL({:#06x})", regs.sp, regs.get_hl()),
             // LDD A,(HL)
             0x3a => format!("ldd A({:#04x}), HL({:#06x})", regs.a, regs.get_hl()),
+            // DEC nn
+            0x0b => format!("dec BC({:#06x})", regs.get_bc()),
+            0x1b => format!("dec DE({:#06x})", regs.get_de()),
+            0x2b => format!("dec HL({:#06x})", regs.get_hl()),
+            0x3b => format!("dec SP({:#06x})", regs.sp),
             0xcb => self.get_cb_opcode_mnemonic(memory),
             _ => "__".to_string(),
         }
@@ -435,6 +440,7 @@ impl Cpu {
                 let address = self.registers.hld();
                 self.ld_a_mem(memory, address);
             }
+            0x0b | 0x1b | 0x2b | 0x3b => self.dec_nn(opcode),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -498,6 +504,31 @@ impl Cpu {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn dec_nn(&mut self, opcode: u8) {
+        match opcode {
+            0x0b => {
+                let v = self.registers.get_bc();
+                self.registers.set_bc(v.wrapping_sub(1));
+            }
+            0x1b => {
+                let v = self.registers.get_de();
+                self.registers.set_de(v.wrapping_sub(1));
+            }
+            0x2b => {
+                let v = self.registers.get_hl();
+                self.registers.set_hl(v.wrapping_sub(1));
+            }
+            0x3b => {
+                let v = self.registers.sp;
+                self.registers.sp = v.wrapping_sub(1);
+            }
+            _ => panic!("Bad opcode {}", opcode),
+        }
+
+        self.registers.pc += 1;
+        self.cycles += 8;
+    }
 
     fn ld_a_mem(&mut self, memory: &mut Memory, address: u16) {
         let v = memory.get_u8(address);
