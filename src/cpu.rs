@@ -426,7 +426,7 @@ impl Cpu {
                 let value = self.ld_r1_r2(opcode, memory, (4, 8));
                 self.registers.l = value;
             }
-            0x70...0x75 => {
+            0x70...0x75 | 0x36 => {
                 let value = self.ld_r1_r2(opcode, memory, (8, 8));
                 memory.set_u8(self.registers.get_hl(), value);
             }
@@ -453,6 +453,7 @@ impl Cpu {
             0x98...0x9f => self.sbc_a_n(opcode, memory),
             0x07 => self.rlca(),
             0x0f => self.rrca(),
+            0xf2 => self.ldh_a_c(memory),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -517,6 +518,14 @@ impl Cpu {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn ldh_a_c(&mut self, memory: &Memory) {
+        let c = self.registers.c;
+        let v = memory.get_u8(0xff00 + u16::from(c));
+        self.registers.a = v;
+        self.registers.pc += 1;
+        self.cycles += 8;
+    }
 
     fn rlc_n(&mut self, opcode: u8, memory: &mut Memory) {
         let reg_index = opcode & 0b0111;
