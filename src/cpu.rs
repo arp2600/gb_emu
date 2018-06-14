@@ -454,6 +454,11 @@ impl Cpu {
             0x07 => self.rlca(),
             0x0f => self.rrca(),
             0xf2 => self.ldh_a_c(memory),
+            0xd9 => self.reti(memory),
+            0xc7 | 0xcf | 0xd7 | 0xdf | 0xe7 | 0xef | 0xf7 | 0xff => {
+                self.rst_n(opcode, memory);
+            }
+            0x10 => self.stop(),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -469,6 +474,8 @@ impl Cpu {
             0x38...0x3f => self.srl_n(opcode, memory),
             0x30...0x37 => self.swap_n(opcode, memory),
             0x00...0x07 => self.rlc_n(opcode, memory),
+            0x08...0x0f => self.rrc_n(opcode, memory),
+            0x80...0xbf => self.res_b_r(opcode, memory),
             _ => panic!("Instruction 0xcb{:02x} not implemented", opcode),
         }
     }
@@ -518,6 +525,62 @@ impl Cpu {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn res_b_r(&mut self, opcode: u8, memory: &mut Memory) {
+        let reg_index = opcode & 0b0111;
+        let bit_shift = (opcode >> 3) & 0b0111;
+        let mask = !(1 << bit_shift);
+        let source = self.get_source_u8(reg_index, memory);
+        let result = source & mask;
+        self.set_dest_u8(reg_index, result, memory);
+
+        self.registers.pc += 1;
+        match reg_index {
+            6 => self.cycles += 16,
+            _ => self.cycles += 8,
+        }
+    }
+
+    fn stop(&mut self) {
+        unimplemented!();
+    }
+
+    fn rrc_n(&mut self, opcode: u8, memory: &mut Memory) {
+        let reg_index = opcode & 0b0111;
+        let source = self.get_source_u8(reg_index, memory);
+        let result = source >> 1;
+        self.set_dest_u8(reg_index, result, memory);
+
+        self.registers.clear_flags();
+        self.registers.set_flagz(result == 0);
+        self.registers.set_flagz(source & 0b1000_000 != 0);
+
+        self.registers.pc += 1;
+        match opcode {
+            0x0e => self.cycles += 16,
+            _ => self.cycles += 8,
+        }
+    }
+
+    fn rst_n(&mut self, opcode: u8, memory: &mut Memory) {
+        let opcode_index = (opcode >> 3) & 0b0011_1000;
+        let jump = u16::from(opcode_index) * 8;
+        memory.set_u16(self.registers.sp, self.registers.pc);
+
+        self.registers.sp -= 2;
+        self.registers.pc += jump;
+        self.cycles += 32;
+    }
+
+    fn reti(&mut self, memory: &Memory) {
+        let sp = self.registers.sp;
+        let new_pc = memory.get_u16(sp);
+        self.registers.sp += 2;
+        self.interrupts_enabled = true;
+
+        self.registers.pc = new_pc;
+        self.cycles += 8;
+    }
 
     fn ldh_a_c(&mut self, memory: &Memory) {
         let c = self.registers.c;
