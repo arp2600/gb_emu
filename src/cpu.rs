@@ -660,15 +660,25 @@ impl Cpu {
     }
 
     fn daa(&mut self) {
+        let flagc = self.registers.flagc();
+        let flagn = self.registers.flagn();
+        let flagh = self.registers.flagh();
         let a = self.registers.a;
-        let mut result = a;
-        if a & 0x0f > 0x09 || self.registers.flagh() {
-            result = result.wrapping_add(0x06);
+        let mut correction = 0;
+
+        if flagh || (!flagn && a & 0x0f > 0x09) {
+            correction = 0x06;
         }
-        if a & 0xf0 > 0x90 || self.registers.flagc() {
-            result = result.wrapping_add(0x60);
+        if flagc || (!flagn && a > 0x99) {
+            correction |= 0x60;
             self.registers.set_flagc(true);
         }
+
+        let result = if flagn {
+            a.wrapping_sub(correction)
+        } else {
+            a.wrapping_add(correction)
+        };
 
         self.registers.a = result;
 
@@ -962,7 +972,6 @@ impl Cpu {
         }
 
         self.registers.clear_flags();
-        self.registers.set_flagz(result == 0);
         self.registers.set_flagc(a & 0b1 == 1);
 
         self.registers.a = result;
