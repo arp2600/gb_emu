@@ -624,7 +624,7 @@ impl Cpu {
 
         let a = self.registers.a;
         self.registers.set_flagc(a & 0b1000_0000 != 0);
-        let result = (a << 1) + (a >> 7);
+        let result = a.rotate_left(1);
         self.registers.set_flagz(result == 0);
 
         self.registers.pc += 1;
