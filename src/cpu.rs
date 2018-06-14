@@ -301,6 +301,8 @@ impl Cpu {
             0x1b => format!("dec DE({:#06x})", regs.get_de()),
             0x2b => format!("dec HL({:#06x})", regs.get_hl()),
             0x3b => format!("dec SP({:#06x})", regs.sp),
+            0x37 => "scf".to_string(),
+            0xe8 => format!("add SP({:#06x}) {:#04x}", regs.sp, self.load_imm_u8(memory)),
             0xcb => self.get_cb_opcode_mnemonic(memory),
             _ => "__".to_string(),
         }
@@ -347,6 +349,7 @@ impl Cpu {
             0x34 => format!("swap H({:#04x})", self.registers.h),
             0x35 => format!("swap L({:#04x})", self.registers.l),
             0x36 => format!("swap (HL({:#04x}))", self.registers.get_hl()),
+            0x2f => "cpl".to_string(),
             _ => "CB__".to_string(),
         }
     }
@@ -441,6 +444,15 @@ impl Cpu {
                 self.ld_a_mem(memory, address);
             }
             0x0b | 0x1b | 0x2b | 0x3b => self.dec_nn(opcode),
+            0x2f => self.cpl(),
+            0x37 => self.scf(),
+            0xe8 => self.add_sp_n(memory),
+            0xf8 => self.ldhl_sp_n(memory),
+            0x27 => self.daa(),
+            0x3f => self.ccf(),
+            0x98...0x9f => self.sbc_a_n(opcode, memory),
+            0x07 => self.rlca(),
+            0x0f => self.rrca(),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -455,6 +467,7 @@ impl Cpu {
             0x18...0x1f => self.rr_n(opcode, memory),
             0x38...0x3f => self.srl_n(opcode, memory),
             0x30...0x37 => self.swap_n(opcode, memory),
+            0x00...0x07 => self.rlc_n(opcode, memory),
             _ => panic!("Instruction 0xcb{:02x} not implemented", opcode),
         }
     }
@@ -504,6 +517,159 @@ impl Cpu {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn rlc_n(&mut self, opcode: u8, memory: &mut Memory) {
+        let reg_index = opcode & 0b0111;
+        let source = self.get_source_u8(reg_index, memory);
+        let result = source << 1;
+        self.set_dest_u8(reg_index, result, memory);
+
+        self.registers.clear_flags();
+        self.registers.set_flagz(result == 0);
+        self.registers.set_flagc(source & 0b1000_0000 != 0);
+
+        self.registers.pc += 1;
+        match opcode {
+            0x06 => self.cycles += 16,
+            _ => self.cycles += 8,
+        }
+    }
+
+    fn rrca(&mut self) {
+        let a = self.registers.a;
+        let result = a >> 1;
+
+        self.registers.clear_flags();
+        self.registers.set_flagz(result == 0);
+        self.registers.set_flagc(a & 0b1000_0000 != 0);
+
+        self.registers.pc += 1;
+        self.cycles += 4;
+    }
+
+    fn rlca(&mut self) {
+        self.registers.clear_flags();
+
+        let a = self.registers.a;
+        self.registers.set_flagc(a & 0b1000_0000 != 0);
+        let result = (a << 1) + (a >> 7);
+        self.registers.set_flagz(result == 0);
+
+        self.registers.pc += 1;
+        self.cycles += 4;
+    }
+
+    fn sbc_a_n(&mut self, opcode: u8, memory: &Memory) {
+        let reg_index = opcode & 0b0111;
+        let source = self.get_source_u8(reg_index, memory);
+        let a = self.registers.a;
+        let flagc = self.registers.flagc() as u8;
+        let n = source.wrapping_add(flagc);
+        let result = a.wrapping_sub(n);
+
+        self.registers.set_flagz(result == 0);
+        self.registers.set_flagn(true);
+        self.registers.set_flagh(a & 0xf < n & 0xf);
+        self.registers.set_flagc(a < n);
+
+        self.registers.pc += 1;
+        match opcode {
+            0x9e => self.cycles += 8,
+            _ => self.cycles += 4,
+        }
+    }
+
+    fn ccf(&mut self) {
+        let flagc = self.registers.flagc();
+        self.registers.set_flagc(!flagc);
+
+        self.registers.pc += 1;
+        self.cycles += 4;
+    }
+
+    fn daa(&mut self) {
+        let a = self.registers.a;
+        let mut result = a;
+        if a & 0x0f > 0x09 || self.registers.flagh() {
+            result = result.wrapping_add(0x06);
+        }
+        if a & 0xf0 > 0x90 || self.registers.flagc() {
+            result = result.wrapping_add(0x60);
+            self.registers.set_flagc(true);
+        }
+
+        self.registers.a = result;
+
+        self.registers.set_flagh(false);
+        self.registers.set_flagz(result == 0);
+
+        self.registers.pc += 1;
+        self.cycles += 4;
+    }
+
+    fn ldhl_sp_n(&mut self, memory: &Memory) {
+        let n = self.load_imm_u8(memory) as u16;
+        let sp = self.registers.sp;
+
+        self.registers.clear_flags();
+
+        if n & 0b1000_0000 != 0 {
+            let result = sp.wrapping_sub(n & 0b0111_1111);
+            self.registers.set_flagc(false);
+            self.registers.set_flagh(false);
+            self.registers.set_hl(result);
+        } else {
+            let result = sp.wrapping_add(n);
+            self.registers.set_flagc(sp.checked_add(n).is_none());
+            self.registers.set_flagh((sp & 0xfff + n & 0xfff) > 0xfff);
+            self.registers.set_hl(result);
+        };
+
+        self.registers.pc += 2;
+        self.cycles += 12;
+    }
+
+    fn add_sp_n(&mut self, memory: &Memory) {
+        let n = self.load_imm_u8(memory) as u16;
+        let sp = self.registers.sp;
+
+        self.registers.clear_flags();
+
+        if n & 0b1000_0000 != 0 {
+            let result = sp.wrapping_sub(n & 0b0111_1111);
+            self.registers.set_flagc(false);
+            self.registers.set_flagh(false);
+            self.registers.sp = result;
+        } else {
+            let result = sp.wrapping_add(n);
+            self.registers.set_flagc(sp.checked_add(n).is_none());
+            self.registers.set_flagh((sp & 0xfff + n & 0xfff) > 0xfff);
+            self.registers.sp = result;
+        };
+
+        self.registers.pc += 2;
+        self.cycles += 16;
+    }
+
+    fn scf(&mut self) {
+        self.registers.set_flagn(false);
+        self.registers.set_flagh(false);
+        self.registers.set_flagc(true);
+
+        self.registers.pc += 1;
+        self.cycles += 4;
+    }
+
+    fn cpl(&mut self) {
+        let a = self.registers.a;
+        self.registers.a = !a;
+
+        self.registers.set_flagn(true);
+        self.registers.set_flagh(true);
+
+        self.registers.pc += 1;
+        self.cycles += 4;
+    }
 
     fn dec_nn(&mut self, opcode: u8) {
         match opcode {
@@ -697,7 +863,7 @@ impl Cpu {
         };
 
         if self.registers.flagc() {
-            n += 1;
+            n = n.wrapping_add(1);
         }
 
         let a = self.registers.a;
