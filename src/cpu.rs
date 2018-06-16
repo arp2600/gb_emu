@@ -533,20 +533,9 @@ impl Cpu {
         memory.get_u16(self.registers.pc + 1)
     }
 
-    fn push_stack_u8(&mut self, value: u8, memory: &mut Memory) {
-        self.registers.sp -= 1;
-        memory.set_u8(self.registers.sp, value);
-    }
-
     fn push_stack_u16(&mut self, value: u16, memory: &mut Memory) {
         self.registers.sp -= 2;
         memory.set_u16(self.registers.sp, value);
-    }
-
-    fn pop_stack_u8(&mut self, memory: &Memory) -> u8 {
-        let v = memory.get_u8(self.registers.sp);
-        self.registers.sp += 1;
-        v
     }
 
     fn pop_stack_u16(&mut self, memory: &Memory) -> u16 {
@@ -612,17 +601,15 @@ impl Cpu {
         let opcode_index = (opcode >> 3) & 0b0111;
         let jump = u16::from(opcode_index) * 8;
 
-        self.registers.sp -= 2;
-        memory.set_u16(self.registers.sp, self.registers.pc + 1);
+        let pc = self.registers.pc;
+        self.push_stack_u16(pc + 1, memory);
 
         self.registers.pc = jump;
         self.cycles += 32;
     }
 
     fn reti(&mut self, memory: &Memory) {
-        let sp = self.registers.sp;
-        let new_pc = memory.get_u16(sp);
-        self.registers.sp += 2;
+        let new_pc = self.pop_stack_u16(memory);
         self.interrupts_enabled = true;
 
         self.registers.pc = new_pc;
@@ -967,8 +954,7 @@ impl Cpu {
         };
 
         if cc {
-            self.registers.pc = memory.get_u16(self.registers.sp);
-            self.registers.sp += 2;
+            self.registers.pc = self.pop_stack_u16(memory);
             self.cycles += 20;
         } else {
             self.registers.pc += 1;
@@ -1037,8 +1023,8 @@ impl Cpu {
 
         if cc {
             let nn = self.load_imm_u16(memory);
-            memory.set_u16(self.registers.sp - 2, self.registers.pc + 3);
-            self.registers.sp -= 2;
+            let pc = self.registers.pc;
+            self.push_stack_u16(pc + 3, memory);
             self.registers.pc = nn;
             self.cycles += 24;
         } else {
@@ -1246,9 +1232,7 @@ impl Cpu {
     }
 
     fn ret(&mut self, memory: &Memory) {
-        let sp = self.registers.sp;
-        let addr = memory.get_u16(sp);
-        self.registers.sp += 2;
+        let addr = self.pop_stack_u16(memory);
         self.registers.pc = addr;
         self.cycles += 16;
     }
@@ -1347,8 +1331,8 @@ impl Cpu {
     fn call_nn(&mut self, memory: &mut Memory) {
         let addr = self.load_imm_u16(memory);
         self.registers.pc += 3;
-        self.registers.sp -= 2;
-        memory.set_u16(self.registers.sp, self.registers.pc);
+        let pc = self.registers.pc;
+        self.push_stack_u16(pc, memory);
         self.registers.pc = addr;
         self.cycles += 24;
     }
