@@ -476,6 +476,7 @@ impl Cpu {
             0x00...0x07 => self.rlc_n(opcode, memory),
             0x08...0x0f => self.rrc_n(opcode, memory),
             0x80...0xbf => self.res_b_r(opcode, memory),
+            0xc0...0xff => self.set_b_r(opcode, memory),
             _ => panic!("Instruction 0xcb{:02x} not implemented", opcode),
         }
     }
@@ -526,12 +527,25 @@ impl Cpu {
                          Opcodes
     ************************************************************/
 
+    fn set_b_r(&mut self, opcode: u8, memory: &mut Memory) {
+        let reg_index = opcode & 0b0111;
+        let bit_index = (opcode >> 3) & 0b0111;
+        let source = self.get_source_u8(reg_index, memory);
+        let result = source.set_bit(bit_index);
+        self.set_dest_u8(reg_index, result, memory);
+
+        self.registers.pc += 1;
+        match reg_index {
+            6 => self.cycles += 16,
+            _ => self.cycles += 8,
+        }
+    }
+
     fn res_b_r(&mut self, opcode: u8, memory: &mut Memory) {
         let reg_index = opcode & 0b0111;
-        let bit_shift = (opcode >> 3) & 0b0111;
-        let mask = !(1 << bit_shift);
+        let bit_index = (opcode >> 3) & 0b0111;
         let source = self.get_source_u8(reg_index, memory);
-        let result = source & mask;
+        let result = source.reset_bit(bit_index);
         self.set_dest_u8(reg_index, result, memory);
 
         self.registers.pc += 1;
@@ -714,7 +728,6 @@ impl Cpu {
     fn add_sp_n(&mut self, memory: &Memory) {
         let n = u16::from(self.load_imm_u8(memory));
         let sp = self.registers.sp;
-
         self.registers.clear_flags();
 
         if n & 0b1000_0000 != 0 {
@@ -1497,6 +1510,25 @@ impl Cpu {
         }
     }
 }
+
+trait BitSet {
+    type Item;
+    fn set_bit(&self, bit: u8) -> Self::Item;
+    fn reset_bit(&self, bit: u8) -> Self::Item;
+}
+
+impl BitSet for u8 {
+    type Item = u8;
+
+    fn set_bit(&self, bit: u8) -> Self::Item {
+        self | (1 << bit)
+    }
+
+    fn reset_bit(&self, bit: u8) -> Self::Item {
+        self & !(1 << bit)
+    }
+}
+
 
 // Add a 'signed' u8 to an unsigned u16
 fn signed_add_u16_u8(lhs: u16, rhs: u8) -> u16 {
