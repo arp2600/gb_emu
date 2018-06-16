@@ -59,7 +59,7 @@ impl Cpu {
 
             match registers.pc {
                 // Ignore screen update
-                0xc360...0xc369 => (),
+                0xc733...0xc73c => (),
                 _ => {
                     println!(
                         "{:#06x}  {:02x}  {:020}  #  {}",
@@ -301,6 +301,16 @@ impl Cpu {
             0x1b => format!("dec DE({:#06x})", regs.get_de()),
             0x2b => format!("dec HL({:#06x})", regs.get_hl()),
             0x3b => format!("dec SP({:#06x})", regs.sp),
+            // RST n
+            0xc7 => format!("rst {:#04x}", self.load_imm_u8(memory)),
+            0xcf => format!("rst {:#04x}", self.load_imm_u8(memory)),
+            0xd7 => format!("rst {:#04x}", self.load_imm_u8(memory)),
+            0xdf => format!("rst {:#04x}", self.load_imm_u8(memory)),
+            0xe7 => format!("rst {:#04x}", self.load_imm_u8(memory)),
+            0xef => format!("rst {:#04x}", self.load_imm_u8(memory)),
+            0xf7 => format!("rst {:#04x}", self.load_imm_u8(memory)),
+            0xff => format!("rst {:#04x}", self.load_imm_u8(memory)),
+            // OTHER
             0x37 => "scf".to_string(),
             0xe8 => format!("add SP({:#06x}) {:#04x}", regs.sp, self.load_imm_u8(memory)),
             0xcb => self.get_cb_opcode_mnemonic(memory),
@@ -523,6 +533,28 @@ impl Cpu {
         memory.get_u16(self.registers.pc + 1)
     }
 
+    fn push_stack_u8(&mut self, value: u8, memory: &mut Memory) {
+        self.registers.sp -= 1;
+        memory.set_u8(self.registers.sp, value);
+    }
+
+    fn push_stack_u16(&mut self, value: u16, memory: &mut Memory) {
+        self.registers.sp -= 2;
+        memory.set_u16(self.registers.sp, value);
+    }
+
+    fn pop_stack_u8(&mut self, memory: &Memory) -> u8 {
+        let v = memory.get_u8(self.registers.sp);
+        self.registers.sp += 1;
+        v
+    }
+
+    fn pop_stack_u16(&mut self, memory: &Memory) -> u16 {
+        let v = memory.get_u16(self.registers.sp);
+        self.registers.sp += 2;
+        v
+    }
+
     /************************************************************
                          Opcodes
     ************************************************************/
@@ -577,12 +609,13 @@ impl Cpu {
     }
 
     fn rst_n(&mut self, opcode: u8, memory: &mut Memory) {
-        let opcode_index = (opcode >> 3) & 0b0011_1000;
+        let opcode_index = (opcode >> 3) & 0b0111;
         let jump = u16::from(opcode_index) * 8;
-        memory.set_u16(self.registers.sp, self.registers.pc);
 
         self.registers.sp -= 2;
-        self.registers.pc += jump;
+        memory.set_u16(self.registers.sp, self.registers.pc + 1);
+
+        self.registers.pc = jump;
         self.cycles += 32;
     }
 
@@ -1245,8 +1278,7 @@ impl Cpu {
     }
 
     fn pop_nn(&mut self, opcode: u8, memory: &Memory) {
-        let sp = self.registers.sp;
-        let value = memory.get_u16(sp);
+        let value = self.pop_stack_u16(memory);
 
         match opcode {
             0xf1 => self.registers.set_af(value),
@@ -1256,7 +1288,6 @@ impl Cpu {
             _ => panic!("Bad opcode {}", opcode),
         };
 
-        self.registers.sp += 2;
         self.registers.pc += 1;
         self.cycles += 12;
     }
@@ -1308,8 +1339,7 @@ impl Cpu {
             _ => panic!("Bad opcode {}", opcode),
         };
 
-        memory.set_u16(self.registers.sp - 2, value);
-        self.registers.sp -= 2;
+        self.push_stack_u16(value, memory);
         self.registers.pc += 1;
         self.cycles += 16;
     }
