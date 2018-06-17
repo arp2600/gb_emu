@@ -894,6 +894,7 @@ impl Cpu {
         let reg_index = opcode & 0b0111;
         let source = self.get_source_u8(reg_index, memory);
         let result = (source >> 4) | (source << 4);
+        self.set_dest_u8(reg_index, result, memory);
 
         self.registers.clear_flags();
         self.registers.set_flagz(result == 0);
