@@ -59,7 +59,7 @@ impl Cpu {
 
             match registers.pc {
                 // Ignore screen update
-                0xc9f6...0xc9ff => (),
+                // 0xc9f6...0xc9ff => (),
                 _ => {
                     println!(
                         "{:#06x}  {:02x}  {:020}  #  {}",
@@ -816,43 +816,30 @@ impl Cpu {
     }
 
     fn ldhl_sp_n(&mut self, memory: &Memory) {
-        let n = u16::from(self.load_imm_u8(memory));
-        let sp = self.registers.sp;
+        let n = self.load_imm_u8(memory) as i8;
+        let nn = n as i32;
+        let sp = self.registers.sp as i32;
+        let result = sp.wrapping_add(nn);
 
+        self.registers.set_hl(result as u16);
         self.registers.clear_flags();
-
-        if n & 0b1000_0000 != 0 {
-            let result = sp.wrapping_sub(n & 0b0111_1111);
-            self.registers.set_flagc(false);
-            self.registers.set_flagh(false);
-            self.registers.set_hl(result);
-        } else {
-            let result = sp.wrapping_add(n);
-            self.registers.set_flagc(sp.checked_add(n).is_none());
-            self.registers.set_flagh((sp & 0xfff) + (n & 0xfff) > 0xfff);
-            self.registers.set_hl(result);
-        };
+        self.registers.set_flagc((sp ^ nn ^ result) & 0x100 != 0);
+        self.registers.set_flagh((sp ^ nn ^ result) & 0x10 != 0);
 
         self.registers.pc += 2;
         self.cycles += 12;
     }
 
     fn add_sp_n(&mut self, memory: &Memory) {
-        let n = u16::from(self.load_imm_u8(memory));
-        let sp = self.registers.sp;
-        self.registers.clear_flags();
+        let n = self.load_imm_u8(memory) as i8;
+        let nn = n as i32;
+        let sp = self.registers.sp as i32;
+        let result = sp.wrapping_add(nn);
 
-        if n & 0b1000_0000 != 0 {
-            let result = sp.wrapping_sub(n & 0b0111_1111);
-            self.registers.set_flagc(false);
-            self.registers.set_flagh(false);
-            self.registers.sp = result;
-        } else {
-            let result = sp.wrapping_add(n);
-            self.registers.set_flagc(sp.checked_add(n).is_none());
-            self.registers.set_flagh((sp & 0xfff) + (n & 0xfff) > 0xfff);
-            self.registers.sp = result;
-        };
+        self.registers.sp = result as u16;
+        self.registers.clear_flags();
+        self.registers.set_flagc((sp ^ nn ^ result) & 0x100 != 0);
+        self.registers.set_flagh((sp ^ nn ^ result) & 0x10 != 0);
 
         self.registers.pc += 2;
         self.cycles += 16;
