@@ -45,7 +45,7 @@ fn misc_instrs() {
 
 #[test]
 fn op_r_r() {
-    run_test_rom("individual/09-op r,r.gb", 3_000_000);
+    run_test_rom("individual/09-op r,r.gb", 5_000_000);
 }
 
 #[test]

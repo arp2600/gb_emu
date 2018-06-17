@@ -59,7 +59,7 @@ impl Cpu {
 
             match registers.pc {
                 // Ignore screen update
-                0xc6c2...0xc6cb => (),
+                0xc9f6...0xc9ff => (),
                 _ => {
                     println!(
                         "{:#06x}  {:02x}  {:020}  #  {}",
@@ -319,6 +319,10 @@ impl Cpu {
             0x9c => format!("sbc A({:#04x}),H({:#04x})", regs.a, regs.h),
             0x9d => format!("sbc A({:#04x}),L({:#04x})", regs.a, regs.l),
             0x9e => format!("sbc A({:#04x}),HL({:#06x})", regs.a, regs.get_hl()),
+            // RLCA
+            0x07 => format!("rlca A({:#04x})", self.registers.a),
+            // RRCA
+            0x0f => format!("rrca A({:#04x})", self.registers.a),
             // OTHER
             0x37 => "scf".to_string(),
             0xe8 => format!("add SP({:#06x}) {:#04x}", regs.sp, self.load_imm_u8(memory)),
@@ -718,23 +722,23 @@ impl Cpu {
 
     fn rrca(&mut self) {
         let a = self.registers.a;
-        let result = a >> 1;
+        let result = a.rotate_right(1);
+        self.registers.a = result;
 
         self.registers.clear_flags();
-        self.registers.set_flagz(result == 0);
-        self.registers.set_flagc(a & 0b1000_0000 != 0);
+        self.registers.set_flagc(a.get_bit(0));
 
         self.registers.pc += 1;
         self.cycles += 4;
     }
 
     fn rlca(&mut self) {
-        self.registers.clear_flags();
-
         let a = self.registers.a;
-        self.registers.set_flagc(a & 0b1000_0000 != 0);
         let result = a.rotate_left(1);
-        self.registers.set_flagz(result == 0);
+        self.registers.a = result;
+
+        self.registers.clear_flags();
+        self.registers.set_flagc(a.get_bit(7));
 
         self.registers.pc += 1;
         self.cycles += 4;
@@ -774,6 +778,8 @@ impl Cpu {
     fn ccf(&mut self) {
         let flagc = self.registers.flagc();
         self.registers.set_flagc(!flagc);
+        self.registers.set_flagn(false);
+        self.registers.set_flagh(false);
 
         self.registers.pc += 1;
         self.cycles += 4;
