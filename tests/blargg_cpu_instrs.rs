@@ -55,7 +55,7 @@ fn bit_ops() {
 
 #[test]
 fn op_a_hl() {
-    run_test_rom("individual/11-op_a_hl.gb", 3_000_000);
+    run_test_rom("individual/11-op_a_hl.gb", 8_000_000);
 }
 
 #[test]

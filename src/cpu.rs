@@ -59,7 +59,7 @@ impl Cpu {
 
             match registers.pc {
                 // Ignore screen update
-                0xc733...0xc73c => (),
+                0xc7ee...0xc7f7 => (),
                 _ => {
                     println!(
                         "{:#06x}  {:02x}  {:020}  #  {}",
@@ -310,6 +310,15 @@ impl Cpu {
             0xef => format!("rst {:#04x}", self.load_imm_u8(memory)),
             0xf7 => format!("rst {:#04x}", self.load_imm_u8(memory)),
             0xff => format!("rst {:#04x}", self.load_imm_u8(memory)),
+            // SBC A,n
+            0x9f => format!("sbc A({:#04x}),A({:#04x})", regs.a, regs.a),
+            0x98 => format!("sbc A({:#04x}),B({:#04x})", regs.a, regs.b),
+            0x99 => format!("sbc A({:#04x}),C({:#04x})", regs.a, regs.c),
+            0x9a => format!("sbc A({:#04x}),D({:#04x})", regs.a, regs.d),
+            0x9b => format!("sbc A({:#04x}),E({:#04x})", regs.a, regs.e),
+            0x9c => format!("sbc A({:#04x}),H({:#04x})", regs.a, regs.h),
+            0x9d => format!("sbc A({:#04x}),L({:#04x})", regs.a, regs.l),
+            0x9e => format!("sbc A({:#04x}),HL({:#06x})", regs.a, regs.get_hl()),
             // OTHER
             0x37 => "scf".to_string(),
             0xe8 => format!("add SP({:#06x}) {:#04x}", regs.sp, self.load_imm_u8(memory)),
@@ -359,6 +368,24 @@ impl Cpu {
             0x34 => format!("swap H({:#04x})", self.registers.h),
             0x35 => format!("swap L({:#04x})", self.registers.l),
             0x36 => format!("swap (HL({:#04x}))", self.registers.get_hl()),
+            // RLC n
+            0x07 => format!("rlc A({:#04x})", self.registers.a),
+            0x00 => format!("rlc B({:#04x})", self.registers.b),
+            0x01 => format!("rlc C({:#04x})", self.registers.c),
+            0x02 => format!("rlc D({:#04x})", self.registers.d),
+            0x03 => format!("rlc E({:#04x})", self.registers.e),
+            0x04 => format!("rlc H({:#04x})", self.registers.h),
+            0x05 => format!("rlc L({:#04x})", self.registers.l),
+            0x06 => format!("rlc (HL({:#04x}))", self.registers.get_hl()),
+            // RRC n
+            0x0f => format!("rrc A({:#04x})", self.registers.a),
+            0x08 => format!("rrc B({:#04x})", self.registers.b),
+            0x09 => format!("rrc C({:#04x})", self.registers.c),
+            0x0a => format!("rrc D({:#04x})", self.registers.d),
+            0x0b => format!("rrc E({:#04x})", self.registers.e),
+            0x0c => format!("rrc H({:#04x})", self.registers.h),
+            0x0d => format!("rrc L({:#04x})", self.registers.l),
+            0x0e => format!("rrc (HL({:#04x}))", self.registers.get_hl()),
             0x2f => "cpl".to_string(),
             _ => "CB__".to_string(),
         }
@@ -487,6 +514,8 @@ impl Cpu {
             0x08...0x0f => self.rrc_n(opcode, memory),
             0x80...0xbf => self.res_b_r(opcode, memory),
             0xc0...0xff => self.set_b_r(opcode, memory),
+            0x20...0x27 => self.sla_n(opcode, memory),
+            0x28...0x2f => self.sra_n(opcode, memory),
             _ => panic!("Instruction 0xcb{:02x} not implemented", opcode),
         }
     }
@@ -548,6 +577,42 @@ impl Cpu {
                          Opcodes
     ************************************************************/
 
+    fn sra_n(&mut self, opcode: u8, memory: &mut Memory) {
+        let reg_index = opcode & 0b0111;
+        let source = self.get_source_u8(reg_index, memory);
+        let result = source >> 1 | source & 0b1000_0000;
+        self.set_dest_u8(reg_index, result, memory);
+
+        self.registers.clear_flags();
+        self.registers.set_flagz(result == 0);
+        self.registers.set_flagc(source.get_bit(0));
+
+        self.registers.pc += 1;
+
+        match opcode {
+            0x2e => self.cycles += 16,
+            _ => self.cycles += 8,
+        }
+    }
+
+    fn sla_n(&mut self, opcode: u8, memory: &mut Memory) {
+        let reg_index = opcode & 0b0111;
+        let source = self.get_source_u8(reg_index, memory);
+        let result = source << 1;
+        self.set_dest_u8(reg_index, result, memory);
+
+        self.registers.clear_flags();
+        self.registers.set_flagz(result == 0);
+        self.registers.set_flagc(source.get_bit(7));
+
+        self.registers.pc += 1;
+
+        match opcode {
+            0x26 => self.cycles += 16,
+            _ => self.cycles += 8,
+        }
+    }
+
     fn set_b_r(&mut self, opcode: u8, memory: &mut Memory) {
         let reg_index = opcode & 0b0111;
         let bit_index = (opcode >> 3) & 0b0111;
@@ -583,12 +648,12 @@ impl Cpu {
     fn rrc_n(&mut self, opcode: u8, memory: &mut Memory) {
         let reg_index = opcode & 0b0111;
         let source = self.get_source_u8(reg_index, memory);
-        let result = source >> 1;
+        let result = source.rotate_right(1);
         self.set_dest_u8(reg_index, result, memory);
 
         self.registers.clear_flags();
         self.registers.set_flagz(result == 0);
-        self.registers.set_flagz(source & 0b1000_0000 != 0);
+        self.registers.set_flagc(source & 0b0000_0001 != 0);
 
         self.registers.pc += 1;
         match opcode {
@@ -627,7 +692,7 @@ impl Cpu {
     fn rlc_n(&mut self, opcode: u8, memory: &mut Memory) {
         let reg_index = opcode & 0b0111;
         let source = self.get_source_u8(reg_index, memory);
-        let result = source << 1;
+        let result = source.rotate_left(1);
         self.set_dest_u8(reg_index, result, memory);
 
         self.registers.clear_flags();
@@ -670,13 +735,13 @@ impl Cpu {
         let source = self.get_source_u8(reg_index, memory);
         let a = self.registers.a;
         let flagc = self.registers.flagc() as u8;
-        let n = source.wrapping_add(flagc);
-        let result = a.wrapping_sub(n);
+        let result = a.wrapping_sub(source.wrapping_add(flagc));
+        self.registers.a = result;
 
         self.registers.set_flagz(result == 0);
         self.registers.set_flagn(true);
-        self.registers.set_flagh(a & 0xf < n & 0xf);
-        self.registers.set_flagc(a < n);
+        self.registers.set_flagh(a & 0xf < ((source & 0xf) + flagc));
+        self.registers.set_flagc(u16::from(a) < (u16::from(source) + u16::from(flagc)));
 
         self.registers.pc += 1;
         match opcode {
@@ -963,7 +1028,7 @@ impl Cpu {
     }
 
     fn adc_a_n(&mut self, opcode: u8, memory: &mut Memory) {
-        let mut n = match opcode {
+        let n = match opcode {
             0x88...0x8f => {
                 let reg_index = opcode & 0b0000_0111;
                 self.get_source_u8(reg_index, memory)
@@ -976,18 +1041,15 @@ impl Cpu {
             _ => panic!("Bad opcode {}", opcode),
         };
 
-        if self.registers.flagc() {
-            n = n.wrapping_add(1);
-        }
-
+        let flagc = self.registers.flagc() as u8;
         let a = self.registers.a;
-        let result = a.wrapping_add(n);
+        let result = a.wrapping_add(n.wrapping_add(flagc));
         self.registers.a = result;
 
         self.registers.clear_flags();
         self.registers.set_flagz(result == 0);
-        self.registers.set_flagh((a & 0xf) + (n & 0xf) > 0xf);
-        self.registers.set_flagc(u16::from(a) + u16::from(n) > 255);
+        self.registers.set_flagh((a & 0xf) + (n & 0xf) + flagc > 0xf);
+        self.registers.set_flagc(u16::from(a) + u16::from(n) + u16::from(flagc) > 255);
 
         self.registers.pc += 1;
         match opcode {
@@ -1525,14 +1587,19 @@ impl Cpu {
     }
 }
 
-trait BitSet {
+trait BitGetSet {
     type Item;
     fn set_bit(&self, bit: u8) -> Self::Item;
     fn reset_bit(&self, bit: u8) -> Self::Item;
+    fn get_bit(&self, bit: u8) -> bool;
 }
 
-impl BitSet for u8 {
+impl BitGetSet for u8 {
     type Item = u8;
+
+    fn get_bit(&self, bit: u8) -> bool {
+        self & (1 << bit) != 0
+    }
 
     fn set_bit(&self, bit: u8) -> Self::Item {
         self | (1 << bit)
