@@ -59,7 +59,7 @@ impl Cpu {
 
             match registers.pc {
                 // Ignore screen update
-                0xc7ee...0xc7f7 => (),
+                0xc6c2...0xc6cb => (),
                 _ => {
                     println!(
                         "{:#06x}  {:02x}  {:020}  #  {}",
@@ -463,10 +463,11 @@ impl Cpu {
                 let value = self.ld_r1_r2(opcode, memory, (4, 8));
                 self.registers.l = value;
             }
-            0x70...0x75 | 0x36 => {
+            0x70...0x75 => {
                 let value = self.ld_r1_r2(opcode, memory, (8, 8));
                 memory.set_u8(self.registers.get_hl(), value);
             }
+            0x36 => self.ld_hl_n(memory),
             0x9 | 0x19 | 0x29 | 0x39 => self.add_hl_n(opcode),
             0xe9 => self.jp_hl(),
             0xc2 | 0xca | 0xd2 | 0xda => self.jp_cc_nn(opcode, memory),
@@ -487,7 +488,7 @@ impl Cpu {
             0xf8 => self.ldhl_sp_n(memory),
             0x27 => self.daa(),
             0x3f => self.ccf(),
-            0x98...0x9f => self.sbc_a_n(opcode, memory),
+            0x98...0x9f | 0xde => self.sbc_a_n(opcode, memory),
             0x07 => self.rlca(),
             0x0f => self.rrca(),
             0xf2 => self.ldh_a_c(memory),
@@ -576,6 +577,15 @@ impl Cpu {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn ld_hl_n(&mut self, memory: &mut Memory) {
+        let value = self.load_imm_u8(memory);
+        let hl = self.registers.get_hl();
+        memory.set_u8(hl, value);
+
+        self.registers.pc += 2;
+        self.cycles += 12;
+    }
 
     fn sra_n(&mut self, opcode: u8, memory: &mut Memory) {
         let reg_index = opcode & 0b0111;
@@ -731,8 +741,16 @@ impl Cpu {
     }
 
     fn sbc_a_n(&mut self, opcode: u8, memory: &Memory) {
-        let reg_index = opcode & 0b0111;
-        let source = self.get_source_u8(reg_index, memory);
+        let source = match opcode {
+            0xde => {
+                self.load_imm_u8(memory)
+            },
+            _ => {
+                let reg_index = opcode & 0b0111;
+                self.get_source_u8(reg_index, memory)
+            }
+        };
+
         let a = self.registers.a;
         let flagc = self.registers.flagc() as u8;
         let result = a.wrapping_sub(source.wrapping_add(flagc));
@@ -743,9 +761,12 @@ impl Cpu {
         self.registers.set_flagh(a & 0xf < ((source & 0xf) + flagc));
         self.registers.set_flagc(u16::from(a) < (u16::from(source) + u16::from(flagc)));
 
-        self.registers.pc += 1;
         match opcode {
-            0x9e => self.cycles += 8,
+            0xde => self.registers.pc += 2,
+            _ => self.registers.pc += 1,
+        }
+        match opcode {
+            0x9e | 0xde => self.cycles += 8,
             _ => self.cycles += 4,
         }
     }
