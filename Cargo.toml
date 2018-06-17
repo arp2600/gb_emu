@@ -2,10 +2,3 @@
 name = "gb_emu"
 version = "0.1.0"
 authors = ["George Roger <georger@xmos.com>"]
-build = "build.rs"
-
-[build-dependencies]
-strfmt = "0.1.6"
-
-[dependencies]
-
