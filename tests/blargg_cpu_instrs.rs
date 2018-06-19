@@ -58,10 +58,10 @@ fn op_a_hl() {
     run_test_rom("individual/11-op a,(hl).gb", 8_000_000);
 }
 
-#[test]
-fn cpu_instrs() {
-    run_test_rom("cpu_instrs.gb", 3_000_000);
-}
+// #[test]
+// fn cpu_instrs() {
+//     run_test_rom("cpu_instrs.gb", 3_000_000);
+// }
 
 fn run_test_rom(test_rom: &str, max_cycles: u64) {
     let test_rom_path = Path::new("gb-test-roms/cpu_instrs").join(test_rom);
