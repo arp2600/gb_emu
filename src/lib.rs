@@ -1,3 +1,4 @@
+mod bit_ops;
 mod cartridge;
 mod cpu;
 mod lcd;
@@ -6,17 +7,22 @@ mod memory;
 mod memory_values;
 mod opcode_table;
 mod registers;
+mod timer;
+use bit_ops::BitGetSet;
 use cartridge::Cartridge;
 use cpu::Cpu;
 use lcd::LCD;
 use memory::Memory;
+use memory_values::IoRegs;
 use registers::Registers;
 use std::fs;
+use timer::Timer;
 
 pub struct Emulator {
     cpu: Cpu,
     lcd: LCD,
     memory: Memory,
+    timer: Timer,
     tracing: bool,
 }
 
@@ -38,6 +44,7 @@ impl Emulator {
             cpu,
             lcd,
             memory,
+            timer: Timer::new(),
             tracing: false,
         }
     }
@@ -45,6 +52,20 @@ impl Emulator {
     pub fn tick(&mut self) {
         self.lcd.tick(&mut self.memory, self.cpu.get_cycles());
         self.cpu.tick(&mut self.memory, self.tracing);
+        self.timer.tick(&mut self.memory, self.cpu.get_cycles());
+        self.check_for_interrupts();
+    }
+
+    pub fn check_for_interrupts(&mut self) {
+        let interrupt_request = self.memory.get_u8(IoRegs::IF as u16);
+        let interrupt_enable = self.memory.get_u8(IoRegs::IE as u16);
+        let interrupts = interrupt_request & interrupt_enable;
+        if interrupts.get_bit(2) {
+            if self.cpu.try_interrupt(0x50, &mut self.memory) {
+                let flag = interrupt_request.reset_bit(2);
+                self.memory.set_u8(IoRegs::IF as u16, flag);
+            }
+        }
     }
 
     pub fn is_boot_rom_enabled(&self) -> bool {

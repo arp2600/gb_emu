@@ -26,9 +26,19 @@ pub const OAM_SIZE: usize = OAM_END - OAM_START + 1;
 
 pub const IO_START: usize = 0xff00;
 pub const IO_END: usize = 0xff7f;
+pub const IO_SIZE: usize = IO_END - IO_START + 1;
 
 pub const HRAM_START: usize = 0xff80;
 pub const HRAM_SIZE: usize = 127;
 pub const HRAM_END: usize = 0xfffe;
 
 pub const INTERRUPT_ENABLE_REG: usize = 0xffff;
+
+#[derive(Copy, Clone)]
+pub enum IoRegs {
+    TIMA = 0xff05,
+    TMA = 0xff06,
+    TAC = 0xff07,
+    IF = 0xff0f,
+    IE = 0xffff,
+}

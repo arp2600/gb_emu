@@ -10,12 +10,14 @@ pub struct Memory {
     vram: [u8; VRAM_SIZE],
     wram: [u8; WRAM_SIZE],
     oam: [u8; OAM_SIZE],
+    io: [u8; IO_SIZE],
     hram: [u8; HRAM_SIZE],
     lcd_registers: LCDRegisters,
     interrupt_enable_register: u8,
     serial_io_callback: Option<Box<FnMut(u8)>>,
     last_serial_byte: u8,
     serial_data: Vec<u8>,
+    interrupt_flag: u8,
 }
 
 impl Memory {
@@ -29,10 +31,12 @@ impl Memory {
             vram: [0; VRAM_SIZE],
             wram: [0; WRAM_SIZE],
             oam: [0; OAM_SIZE],
+            io: [0; IO_SIZE],
             interrupt_enable_register: 0,
             serial_io_callback: None,
             last_serial_byte: 0,
             serial_data: Vec::new(),
+            interrupt_flag: 0,
         }
     }
 
@@ -58,6 +62,7 @@ impl Memory {
                 Some(x) => x(self.last_serial_byte),
                 None => (),
             },
+            0xff0f => self.interrupt_flag = value,
             0xff40 => self.lcd_registers.lcdc = value,
             0xff41 => self.lcd_registers.stat = value,
             0xff42 => self.lcd_registers.sy = value,
@@ -81,7 +86,7 @@ impl Memory {
             0xff69 => self.lcd_registers.bcpd = value,
             0xff6a => self.lcd_registers.ocps = value,
             0xff6b => self.lcd_registers.ocpd = value,
-            _ => (),
+            _ => self.io[index - IO_START] = value,
         }
     }
 
@@ -95,6 +100,7 @@ impl Memory {
                 println!("get SC");
                 0
             }
+            0xff0f => self.interrupt_flag,
             0xff40 => self.lcd_registers.lcdc,
             0xff41 => self.lcd_registers.stat,
             0xff42 => self.lcd_registers.sy,
@@ -117,7 +123,7 @@ impl Memory {
             0xff69 => self.lcd_registers.bcpd,
             0xff6a => self.lcd_registers.ocps,
             0xff6b => self.lcd_registers.ocpd,
-            _ => 0,
+            _ => self.io[index - IO_START],
         }
     }
 

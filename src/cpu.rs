@@ -1,11 +1,23 @@
+use super::bit_ops::BitGetSet;
 use super::memory::Memory;
+use super::memory_values::IoRegs;
 use super::registers::Registers;
+
+pub const CLOCK_SPEED: u64 = 4194304;
+
+enum HaltState {
+    None,
+    Mode1, // IME = 1
+    Mode2, // IME = 0, IE & IF & 0x1F = 0
+           // Mode3, // IME = 0, IE & IF & 0x1F != 0
+}
 
 pub struct Cpu {
     registers: Registers,
     instruction_counter: usize,
     interrupts_enabled: bool,
     cycles: u64,
+    halt_state: HaltState,
 }
 
 impl Cpu {
@@ -15,7 +27,34 @@ impl Cpu {
             instruction_counter: 0,
             interrupts_enabled: false,
             cycles: 0,
+            halt_state: HaltState::None,
         }
+    }
+
+    pub fn try_interrupt(&mut self, interrupt_address: u16, memory: &mut Memory) -> bool {
+        // TODO move IF flag reset code into here
+        match self.halt_state {
+            HaltState::None | HaltState::Mode1 => {
+                if self.interrupts_enabled {
+                    self.interrupts_enabled = false;
+                    self.halt_state = HaltState::None;
+                    self.call(interrupt_address, memory);
+                    true
+                } else {
+                    false
+                }
+            }
+            HaltState::Mode2 => {
+                self.halt_state = HaltState::None;
+                false // Returning false doesn't clear the IF flag
+            }
+        }
+    }
+
+    fn call(&mut self, address: u16, memory: &mut Memory) {
+        let pc = self.registers.pc;
+        self.push_stack_u16(pc, memory);
+        self.registers.pc = address;
     }
 
     pub fn get_cycles(&self) -> u64 {
@@ -27,6 +66,14 @@ impl Cpu {
     }
 
     pub fn tick(&mut self, memory: &mut Memory, tracing: bool) {
+        match self.halt_state {
+            HaltState::None => (),
+            _ => {
+                self.cycles += 4;
+                return;
+            }
+        }
+
         self.instruction_counter += 1;
 
         if tracing {
@@ -59,7 +106,7 @@ impl Cpu {
 
             match registers.pc {
                 // Ignore screen update
-                // 0xc9f6...0xc9ff => (),
+                0xc37f...0xc388 => (),
                 _ => {
                     println!(
                         "{:#06x}  {:02x}  {:020}  #  {}",
@@ -326,6 +373,7 @@ impl Cpu {
             // OTHER
             0x37 => "scf".to_string(),
             0xe8 => format!("add SP({:#06x}) {:#04x}", regs.sp, self.load_imm_u8(memory)),
+            0x76 => "halt".to_string(),
             0xcb => self.get_cb_opcode_mnemonic(memory),
             _ => "__".to_string(),
         }
@@ -501,6 +549,7 @@ impl Cpu {
                 self.rst_n(opcode, memory);
             }
             0x10 => self.stop(),
+            0x76 => self.halt(memory),
             _ => panic!("Instruction 0x{:02x} not implemented", opcode),
         }
     }
@@ -581,6 +630,24 @@ impl Cpu {
     /************************************************************
                          Opcodes
     ************************************************************/
+
+    fn halt(&mut self, memory: &mut Memory) {
+        if self.interrupts_enabled {
+            self.halt_state = HaltState::Mode1;
+            self.registers.pc += 1;
+        } else {
+            let ie_flag = memory.get_u8(IoRegs::IE as u16);
+            let if_flag = memory.get_u8(IoRegs::IF as u16);
+            if (ie_flag & if_flag & 0b11111) == 0 {
+                self.halt_state = HaltState::Mode2;
+                self.registers.pc += 1;
+            } else {
+                unimplemented!();
+            }
+        }
+
+        self.cycles += 4;
+    }
 
     fn ld_hl_n(&mut self, memory: &mut Memory) {
         let value = self.load_imm_u8(memory);
@@ -746,9 +813,7 @@ impl Cpu {
 
     fn sbc_a_n(&mut self, opcode: u8, memory: &Memory) {
         let source = match opcode {
-            0xde => {
-                self.load_imm_u8(memory)
-            },
+            0xde => self.load_imm_u8(memory),
             _ => {
                 let reg_index = opcode & 0b0111;
                 self.get_source_u8(reg_index, memory)
@@ -763,7 +828,8 @@ impl Cpu {
         self.registers.set_flagz(result == 0);
         self.registers.set_flagn(true);
         self.registers.set_flagh(a & 0xf < ((source & 0xf) + flagc));
-        self.registers.set_flagc(u16::from(a) < (u16::from(source) + u16::from(flagc)));
+        self.registers
+            .set_flagc(u16::from(a) < (u16::from(source) + u16::from(flagc)));
 
         match opcode {
             0xde => self.registers.pc += 2,
@@ -1063,8 +1129,10 @@ impl Cpu {
 
         self.registers.clear_flags();
         self.registers.set_flagz(result == 0);
-        self.registers.set_flagh((a & 0xf) + (n & 0xf) + flagc > 0xf);
-        self.registers.set_flagc(u16::from(a) + u16::from(n) + u16::from(flagc) > 255);
+        self.registers
+            .set_flagh((a & 0xf) + (n & 0xf) + flagc > 0xf);
+        self.registers
+            .set_flagc(u16::from(a) + u16::from(n) + u16::from(flagc) > 255);
 
         self.registers.pc += 1;
         match opcode {
@@ -1601,30 +1669,6 @@ impl Cpu {
         }
     }
 }
-
-trait BitGetSet {
-    type Item;
-    fn set_bit(&self, bit: u8) -> Self::Item;
-    fn reset_bit(&self, bit: u8) -> Self::Item;
-    fn get_bit(&self, bit: u8) -> bool;
-}
-
-impl BitGetSet for u8 {
-    type Item = u8;
-
-    fn get_bit(&self, bit: u8) -> bool {
-        self & (1 << bit) != 0
-    }
-
-    fn set_bit(&self, bit: u8) -> Self::Item {
-        self | (1 << bit)
-    }
-
-    fn reset_bit(&self, bit: u8) -> Self::Item {
-        self & !(1 << bit)
-    }
-}
-
 
 // Add a 'signed' u8 to an unsigned u16
 fn signed_add_u16_u8(lhs: u16, rhs: u8) -> u16 {
