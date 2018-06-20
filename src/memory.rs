@@ -38,7 +38,7 @@ impl Memory {
         self.boot_rom_enabled
     }
 
-    fn set_io(&mut self, index: usize, value: u8) {
+    fn set_io_indexed(&mut self, index: usize, value: u8) {
         match index {
             0xff01 => self.serial_data.push(value),
             0xff50 => self.boot_rom_enabled = false,
@@ -48,8 +48,22 @@ impl Memory {
         self.io[index - IO_START] = value;
     }
 
-    fn get_io(&self, index: usize) -> u8 {
+    fn get_io_indexed(&self, index: usize) -> u8 {
         self.io[index - IO_START]
+    }
+
+    pub fn get_io(&self, reg: IoRegs) -> u8 {
+        match reg {
+            IoRegs::IE => self.interrupt_enable_register,
+            _ => self.get_io_indexed(reg as usize),
+        }
+    }
+
+    pub fn set_io(&mut self, reg: IoRegs, value: u8) {
+        match reg {
+            IoRegs::IE => self.interrupt_enable_register = value,
+            _ => self.set_io_indexed(reg as usize, value),
+        }
     }
 
     pub fn set_u8(&mut self, index: u16, value: u8) {
@@ -64,7 +78,7 @@ impl Memory {
                 self.wram[index - WRAM_ECHO_START] = value;
             }
             OAM_START...OAM_END => self.oam[index - OAM_START] = value,
-            IO_START...IO_END => self.set_io(index, value),
+            IO_START...IO_END => self.set_io_indexed(index, value),
             HRAM_START...HRAM_END => self.hram[index - HRAM_START] = value,
             INTERRUPT_ENABLE_REG => self.interrupt_enable_register = value,
             x => bad_write_panic(x),
@@ -82,7 +96,7 @@ impl Memory {
             WRAM_START...WRAM_END => self.wram[index - WRAM_START],
             WRAM_ECHO_START...WRAM_ECHO_END => self.wram[index - WRAM_ECHO_START],
             OAM_START...OAM_END => self.oam[index - OAM_START],
-            IO_START...IO_END => self.get_io(index),
+            IO_START...IO_END => self.get_io_indexed(index),
             HRAM_START...HRAM_END => self.hram[index - HRAM_START],
             INTERRUPT_ENABLE_REG => self.interrupt_enable_register,
             x => {

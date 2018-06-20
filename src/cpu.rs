@@ -24,11 +24,11 @@ impl Interrupt {
     }
 
     fn reset_flag(&self, memory: &mut Memory) {
-        let flag = memory.get_u8(IoRegs::IF as u16);
+        let flag = memory.get_io(IoRegs::IF);
         let new_flag = match self {
             Interrupt::Timer => flag.reset_bit(2),
         };
-        memory.set_u8(IoRegs::IF as u16, new_flag);
+        memory.set_io(IoRegs::IF, new_flag);
     }
 }
 
@@ -52,8 +52,8 @@ impl Cpu {
     }
 
     pub fn check_interrupts(&mut self, memory: &mut Memory) {
-        let interrupt_request = memory.get_u8(IoRegs::IF as u16);
-        let interrupt_enable = memory.get_u8(IoRegs::IE as u16);
+        let interrupt_request = memory.get_io(IoRegs::IF);
+        let interrupt_enable = memory.get_io(IoRegs::IE);
         let interrupts = interrupt_request & interrupt_enable;
         if interrupts.get_bit(2) {
             self.try_interrupt(Interrupt::Timer, memory);
@@ -662,8 +662,8 @@ impl Cpu {
             self.halt_state = HaltState::Mode1;
             self.registers.pc += 1;
         } else {
-            let ie_flag = memory.get_u8(IoRegs::IE as u16);
-            let if_flag = memory.get_u8(IoRegs::IF as u16);
+            let ie_flag = memory.get_io(IoRegs::IE);
+            let if_flag = memory.get_io(IoRegs::IF);
             if (ie_flag & if_flag).trailing_zeros() >= 5 {
                 self.halt_state = HaltState::Mode2;
                 self.registers.pc += 1;
