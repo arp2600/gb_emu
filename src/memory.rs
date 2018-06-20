@@ -11,9 +11,7 @@ pub struct Memory {
     io: [u8; IO_SIZE],
     hram: [u8; HRAM_SIZE],
     interrupt_enable_register: u8,
-    last_serial_byte: u8,
     serial_data: Vec<u8>,
-    interrupt_flag: u8,
 }
 
 impl Memory {
@@ -28,9 +26,7 @@ impl Memory {
             oam: [0; OAM_SIZE],
             io: [0; IO_SIZE],
             interrupt_enable_register: 0,
-            last_serial_byte: 0,
             serial_data: Vec::new(),
-            interrupt_flag: 0,
         }
     }
 
@@ -44,29 +40,16 @@ impl Memory {
 
     fn set_io(&mut self, index: usize, value: u8) {
         match index {
-            0xff01 => {
-                self.last_serial_byte = value;
-                self.serial_data.push(value);
-            }
-            0xff0f => self.interrupt_flag = value,
+            0xff01 => self.serial_data.push(value),
             0xff50 => self.boot_rom_enabled = false,
-            _ => self.io[index - IO_START] = value,
+            _ => (),
         }
+
+        self.io[index - IO_START] = value;
     }
 
     fn get_io(&self, index: usize) -> u8 {
-        match index {
-            0xff01 => {
-                println!("get SB");
-                self.last_serial_byte
-            }
-            0xff02 => {
-                println!("get SC");
-                0
-            }
-            0xff0f => self.interrupt_flag,
-            _ => self.io[index - IO_START],
-        }
+        self.io[index - IO_START]
     }
 
     pub fn set_u8(&mut self, index: u16, value: u8) {
