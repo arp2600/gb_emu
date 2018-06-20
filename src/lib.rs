@@ -2,7 +2,6 @@ mod bit_ops;
 mod cartridge;
 mod cpu;
 mod lcd;
-mod lcd_registers;
 mod memory;
 mod memory_values;
 mod opcode_table;

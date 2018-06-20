@@ -1,4 +1,3 @@
-use super::lcd_registers::LCDRegisters;
 use cartridge::Cartridge;
 use memory_values::*;
 
@@ -11,7 +10,6 @@ pub struct Memory {
     oam: [u8; OAM_SIZE],
     io: [u8; IO_SIZE],
     hram: [u8; HRAM_SIZE],
-    lcd_registers: LCDRegisters,
     interrupt_enable_register: u8,
     last_serial_byte: u8,
     serial_data: Vec<u8>,
@@ -25,7 +23,6 @@ impl Memory {
             boot_rom_enabled: true,
             cartridge,
             hram: [0; HRAM_SIZE],
-            lcd_registers: LCDRegisters::new(),
             vram: [0; VRAM_SIZE],
             wram: [0; WRAM_SIZE],
             oam: [0; OAM_SIZE],
@@ -52,29 +49,7 @@ impl Memory {
                 self.serial_data.push(value);
             }
             0xff0f => self.interrupt_flag = value,
-            0xff40 => self.lcd_registers.lcdc = value,
-            0xff41 => self.lcd_registers.stat = value,
-            0xff42 => self.lcd_registers.sy = value,
-            0xff43 => self.lcd_registers.sx = value,
-            0xff44 => self.lcd_registers.ly = value,
-            0xff45 => self.lcd_registers.lyc = value,
-            0xff46 => self.lcd_registers.dma = value,
-            0xff47 => self.lcd_registers.bgp = value,
-            0xff48 => self.lcd_registers.obp0 = value,
-            0xff49 => self.lcd_registers.obp1 = value,
             0xff50 => self.boot_rom_enabled = false,
-            0xff4a => self.lcd_registers.wy = value,
-            0xff4b => self.lcd_registers.wx = value,
-            0xff4f => self.lcd_registers.vbk = value,
-            0xff51 => self.lcd_registers.hdma1 = value,
-            0xff52 => self.lcd_registers.hdma2 = value,
-            0xff53 => self.lcd_registers.hdma3 = value,
-            0xff54 => self.lcd_registers.hdma4 = value,
-            0xff55 => self.lcd_registers.hdma5 = value,
-            0xff68 => self.lcd_registers.bcps = value,
-            0xff69 => self.lcd_registers.bcpd = value,
-            0xff6a => self.lcd_registers.ocps = value,
-            0xff6b => self.lcd_registers.ocpd = value,
             _ => self.io[index - IO_START] = value,
         }
     }
@@ -90,28 +65,6 @@ impl Memory {
                 0
             }
             0xff0f => self.interrupt_flag,
-            0xff40 => self.lcd_registers.lcdc,
-            0xff41 => self.lcd_registers.stat,
-            0xff42 => self.lcd_registers.sy,
-            0xff43 => self.lcd_registers.sx,
-            0xff44 => self.lcd_registers.ly,
-            0xff45 => self.lcd_registers.lyc,
-            0xff46 => self.lcd_registers.dma,
-            0xff47 => self.lcd_registers.bgp,
-            0xff48 => self.lcd_registers.obp0,
-            0xff49 => self.lcd_registers.obp1,
-            0xff4a => self.lcd_registers.wy,
-            0xff4b => self.lcd_registers.wx,
-            0xff4f => self.lcd_registers.vbk,
-            0xff51 => self.lcd_registers.hdma1,
-            0xff52 => self.lcd_registers.hdma2,
-            0xff53 => self.lcd_registers.hdma3,
-            0xff54 => self.lcd_registers.hdma4,
-            0xff55 => self.lcd_registers.hdma5,
-            0xff68 => self.lcd_registers.bcps,
-            0xff69 => self.lcd_registers.bcpd,
-            0xff6a => self.lcd_registers.ocps,
-            0xff6b => self.lcd_registers.ocpd,
             _ => self.io[index - IO_START],
         }
     }
