@@ -1,5 +1,7 @@
+use ansi_term::Colour::{RGB, White};
 use memory::Memory;
 use memory_values::IoRegs;
+use std::io::{self, Write};
 
 pub struct LCD {
     update_time: u64,
@@ -27,7 +29,36 @@ impl LCD {
         if self.enabled && cycles > self.update_time {
             self.update_time += 456;
 
+            let a = get_block(0);
+            // let b = get_block(85);
+            let c = get_block(170);
+            // let d = get_block(255);
+
             let ly = (memory.get_io(IoRegs::LY) + 1) % 154;
+
+            {
+                let stdout = io::stdout();
+                let mut handle = stdout.lock();
+
+                let x = if ly % 2 == 0 {
+                    a
+                } else {
+                    c
+                };
+
+                for i in 0..160 {
+                    write!(handle, "{}", x);
+                    // handle.write(a);
+                    // print!("{}", a);
+                }
+                handle.write(b"\n");
+            }
+            // println!("");
+
+            if ly == 0 {
+                println!("\n\n\n\n\n\n");
+            }
+
             let lyc = memory.get_io(IoRegs::LYC);
 
             if ly == lyc {
@@ -37,6 +68,12 @@ impl LCD {
             memory.set_io(IoRegs::LY, ly);
         }
     }
+}
+
+fn get_block(v: u8) -> String {
+    let c = RGB(v, v, v);
+    let block = White.on(c).paint("   ");
+    format!("{}", block)
 }
 
 #[cfg(test)]

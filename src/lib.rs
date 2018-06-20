@@ -1,3 +1,4 @@
+extern crate ansi_term;
 mod bit_ops;
 mod cartridge;
 mod cpu;
