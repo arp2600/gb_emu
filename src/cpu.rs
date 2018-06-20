@@ -12,6 +12,26 @@ enum HaltState {
            // Mode3, // IME = 0, IE & IF & 0x1F != 0
 }
 
+enum Interrupt {
+    Timer,
+}
+
+impl Interrupt {
+    fn get_address(&self) -> u16 {
+        match self {
+            Interrupt::Timer => 0x50,
+        }
+    }
+
+    fn reset_flag(&self, memory: &mut Memory) {
+        let flag = memory.get_u8(IoRegs::IF as u16);
+        let new_flag = match self {
+            Interrupt::Timer => flag.reset_bit(2),
+        };
+        memory.set_u8(IoRegs::IF as u16, new_flag);
+    }
+}
+
 pub struct Cpu {
     registers: Registers,
     instruction_counter: usize,
@@ -31,22 +51,28 @@ impl Cpu {
         }
     }
 
-    pub fn try_interrupt(&mut self, interrupt_address: u16, memory: &mut Memory) -> bool {
-        // TODO move IF flag reset code into here
+    pub fn check_interrupts(&mut self, memory: &mut Memory) {
+        let interrupt_request = memory.get_u8(IoRegs::IF as u16);
+        let interrupt_enable = memory.get_u8(IoRegs::IE as u16);
+        let interrupts = interrupt_request & interrupt_enable;
+        if interrupts.get_bit(2) {
+            self.try_interrupt(Interrupt::Timer, memory);
+        }
+    }
+
+    fn try_interrupt(&mut self, interrupt: Interrupt, memory: &mut Memory) {
         match self.halt_state {
             HaltState::None | HaltState::Mode1 => {
                 if self.interrupts_enabled {
                     self.interrupts_enabled = false;
                     self.halt_state = HaltState::None;
-                    self.call(interrupt_address, memory);
-                    true
-                } else {
-                    false
+                    self.call(interrupt.get_address(), memory);
+
+                    interrupt.reset_flag(memory);
                 }
             }
             HaltState::Mode2 => {
                 self.halt_state = HaltState::None;
-                false // Returning false doesn't clear the IF flag
             }
         }
     }
