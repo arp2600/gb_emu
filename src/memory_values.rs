@@ -41,4 +41,8 @@ pub enum IoRegs {
     TAC = 0xff07,
     IF = 0xff0f,
     IE = 0xffff,
+    LCDC = 0xff40,
+    STAT = 0xff41,
+    LY = 0xff44,
+    LYC = 0xff45,
 }
