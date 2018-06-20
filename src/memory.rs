@@ -1,7 +1,6 @@
 use super::lcd_registers::LCDRegisters;
 use cartridge::Cartridge;
 use memory_values::*;
-use std::ops::FnMut;
 
 pub struct Memory {
     boot_rom: Vec<u8>,
@@ -14,7 +13,6 @@ pub struct Memory {
     hram: [u8; HRAM_SIZE],
     lcd_registers: LCDRegisters,
     interrupt_enable_register: u8,
-    serial_io_callback: Option<Box<FnMut(u8)>>,
     last_serial_byte: u8,
     serial_data: Vec<u8>,
     interrupt_flag: u8,
@@ -33,7 +31,6 @@ impl Memory {
             oam: [0; OAM_SIZE],
             io: [0; IO_SIZE],
             interrupt_enable_register: 0,
-            serial_io_callback: None,
             last_serial_byte: 0,
             serial_data: Vec::new(),
             interrupt_flag: 0,
@@ -42,10 +39,6 @@ impl Memory {
 
     pub fn get_serial_data(&self) -> &[u8] {
         &self.serial_data
-    }
-
-    pub fn set_serial_io_callback(&mut self, callback: Box<FnMut(u8)>) {
-        self.serial_io_callback = Some(callback);
     }
 
     pub fn is_boot_rom_enabled(&self) -> bool {
@@ -58,10 +51,6 @@ impl Memory {
                 self.last_serial_byte = value;
                 self.serial_data.push(value);
             }
-            0xff02 => match &mut self.serial_io_callback {
-                Some(x) => x(self.last_serial_byte),
-                None => (),
-            },
             0xff0f => self.interrupt_flag = value,
             0xff40 => self.lcd_registers.lcdc = value,
             0xff41 => self.lcd_registers.stat = value,
