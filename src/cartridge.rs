@@ -49,3 +49,23 @@ impl Cartridge {
         (high << 8) | low
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use cartridge::Cartridge;
+    use cartridge::ROM_BANK_SIZE;
+
+    impl Cartridge {
+        pub fn create_dummy() -> Cartridge {
+            let zero_bank = vec![0; ROM_BANK_SIZE];
+            let other_banks = {
+                let x = vec![0; ROM_BANK_SIZE];
+                vec![x]
+            };
+            Cartridge {
+                zero_bank,
+                other_banks,
+            }
+        }
+    }
+}
