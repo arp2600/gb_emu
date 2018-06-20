@@ -3,7 +3,7 @@ use super::memory::Memory;
 use super::memory_values::IoRegs;
 use super::registers::Registers;
 
-pub const CLOCK_SPEED: u64 = 4194304;
+pub const CLOCK_SPEED: u64 = 4_194_304;
 
 enum HaltState {
     None,
@@ -638,7 +638,7 @@ impl Cpu {
         } else {
             let ie_flag = memory.get_u8(IoRegs::IE as u16);
             let if_flag = memory.get_u8(IoRegs::IF as u16);
-            if (ie_flag & if_flag & 0b11111) == 0 {
+            if (ie_flag & if_flag).trailing_zeros() >= 5 {
                 self.halt_state = HaltState::Mode2;
                 self.registers.pc += 1;
             } else {
@@ -883,8 +883,8 @@ impl Cpu {
 
     fn ldhl_sp_n(&mut self, memory: &Memory) {
         let n = self.load_imm_u8(memory) as i8;
-        let nn = n as i32;
-        let sp = self.registers.sp as i32;
+        let nn = i32::from(n);
+        let sp = i32::from(self.registers.sp);
         let result = sp.wrapping_add(nn);
 
         self.registers.set_hl(result as u16);
@@ -898,8 +898,8 @@ impl Cpu {
 
     fn add_sp_n(&mut self, memory: &Memory) {
         let n = self.load_imm_u8(memory) as i8;
-        let nn = n as i32;
-        let sp = self.registers.sp as i32;
+        let nn = i32::from(n);
+        let sp = i32::from(self.registers.sp);
         let result = sp.wrapping_add(nn);
 
         self.registers.sp = result as u16;

@@ -20,19 +20,17 @@ impl Timer {
 
     pub fn tick(&mut self, memory: &mut Memory, cycles: u64) {
         let (tima, tma) = self.read_registers(memory, cycles);
-        if self.enabled {
-            if cycles > self.update_time {
-                self.update_time += self.cpu_cycles_per_tick();
+        if self.enabled && cycles > self.update_time {
+            self.update_time += self.cpu_cycles_per_tick();
 
-                if tima == 255 {
-                    memory.set_u8(IoRegs::TIMA as u16, tma);
-                    // println!("TIMA set to TMA({})", tma);
-                    let if_reg = memory.get_u8(IoRegs::IF as u16).set_bit(2);
-                    memory.set_u8(IoRegs::IF as u16, if_reg);
-                } else {
-                    // println!("TIMA set to {}", tima + 1);
-                    memory.set_u8(IoRegs::TIMA as u16, tima + 1);
-                }
+            if tima == 255 {
+                memory.set_u8(IoRegs::TIMA as u16, tma);
+                // println!("TIMA set to TMA({})", tma);
+                let if_reg = memory.get_u8(IoRegs::IF as u16).set_bit(2);
+                memory.set_u8(IoRegs::IF as u16, if_reg);
+            } else {
+                // println!("TIMA set to {}", tima + 1);
+                memory.set_u8(IoRegs::TIMA as u16, tima + 1);
             }
         }
     }
@@ -48,10 +46,10 @@ impl Timer {
 
         let enabled = tac.get_bit(2);
         let input_clock = match tac & 0b11 {
-            0b00 => 4096,
-            0b01 => 262144,
-            0b10 => 65536,
-            0b11 => 16384,
+            0b00 => 4_096,
+            0b01 => 262_144,
+            0b10 => 65_536,
+            0b11 => 16_384,
             _ => unreachable!(),
         };
 
