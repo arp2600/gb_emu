@@ -1,9 +1,68 @@
+use bit_ops::BitGetSet;
 use memory::Memory;
 use memory_values::IoRegs;
 
 pub trait Screen {
     fn write_line(&mut self, ly: u8, pixels: &[u8; 160]);
     fn end_frame(&mut self);
+}
+
+struct LCDRegisters<'a> {
+    memory: &'a mut Memory,
+    lcdc: Option<u8>,
+    ly: Option<u8>,
+    lyc: Option<u8>,
+    stat: Option<u8>,
+}
+
+macro_rules! create_getter {
+    ( $name:ident, $member:ident, $location:expr ) => {
+        pub fn $name(&mut self) -> u8 {
+            match self.$member {
+                Some(x) => x,
+                None => {
+                    let x = self.memory.get_io($location);
+                    self.$member = Some(x);
+                    x
+                }
+            }
+        }
+    };
+}
+
+macro_rules! create_setter {
+    ( $name:ident, $member:ident, $location:expr ) => {
+        pub fn $name(&mut self, value: u8) {
+            self.$member = Some(value);
+            self.memory.set_io($location, value);
+        }
+    };
+}
+
+impl<'a> LCDRegisters<'a> {
+    fn new(memory: &mut Memory) -> LCDRegisters {
+        LCDRegisters {
+            memory,
+            lcdc: None,
+            ly: None,
+            lyc: None,
+            stat: None,
+        }
+    }
+
+    create_getter!(get_lcdc, lcdc, IoRegs::LCDC);
+
+    create_getter!(get_ly, ly, IoRegs::LY);
+    create_setter!(set_ly, ly, IoRegs::LY);
+
+    create_getter!(get_lyc, ly, IoRegs::LYC);
+    create_setter!(set_lyc, ly, IoRegs::LYC);
+
+    create_setter!(set_stat, stat, IoRegs::STAT);
+
+    pub fn is_enabled(&mut self) -> bool {
+        self.get_lcdc().get_bit(7)
+    }
 }
 
 pub struct LCD {
@@ -24,18 +83,19 @@ impl LCD {
     }
 
     pub fn tick(&mut self, memory: &mut Memory, cycles: u64, screen: Option<&mut Screen>) {
-        let enabled = memory.get_io(IoRegs::LCDC) & 0b1000_0000 != 0;
+        let mut regs = LCDRegisters::new(memory);
+        let enabled = regs.is_enabled();
         if enabled && !self.enabled {
             self.enabled = true;
             self.update_time = cycles;
             self.next_ly = 0;
-            memory.set_io(IoRegs::LY, 0);
+            regs.set_ly(0);
         }
 
         if self.enabled && cycles >= self.update_time {
             self.update_time += 456;
 
-            let ly = memory.get_io(IoRegs::LY);
+            let ly = regs.get_ly();
             if let Some(s) = screen {
                 if ly <= 144 {
                     let mut line = [0; 160];
@@ -51,13 +111,11 @@ impl LCD {
                 self.frame += 1;
             }
 
-            let lyc = memory.get_io(IoRegs::LYC);
+            let lyc = regs.get_lyc();
 
-            if ly == lyc {
-                memory.set_io(IoRegs::STAT, 0b10);
-            }
+            regs.set_stat(if ly == lyc { 0b10 } else { 0 });
 
-            memory.set_io(IoRegs::LY, self.next_ly);
+            regs.set_ly(self.next_ly);
             self.next_ly = self.next_ly.wrapping_add(1) % 154;
         }
     }
