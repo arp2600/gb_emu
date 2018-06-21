@@ -1,9 +1,15 @@
 use memory::Memory;
 use memory_values::IoRegs;
 
+pub trait Screen {
+    fn write_line(&mut self, ly: u8, pixels: &[u8; 160]);
+    fn end_frame(&mut self);
+}
+
 pub struct LCD {
     update_time: u64,
     enabled: bool,
+    frame: u64,
 }
 
 impl LCD {
@@ -11,10 +17,11 @@ impl LCD {
         LCD {
             update_time: 0,
             enabled: false,
+            frame: 0,
         }
     }
 
-    pub fn tick(&mut self, memory: &mut Memory, cycles: u64) {
+    pub fn tick(&mut self, memory: &mut Memory, cycles: u64, screen: Option<&mut Screen>) {
         let enabled = memory.get_io(IoRegs::LCDC) & 0b1000_0000 != 0;
         if enabled && !self.enabled {
             self.enabled = true;
@@ -27,14 +34,29 @@ impl LCD {
         if self.enabled && cycles > self.update_time {
             self.update_time += 456;
 
-            let ly = (memory.get_io(IoRegs::LY) + 1) % 154;
+            let ly = memory.get_io(IoRegs::LY);
+            if let Some(s) = screen {
+                if ly <= 144 {
+                    let mut line = [0; 160];
+                    for i in 0..160 {
+                        let x = (ly.wrapping_add(i)) % 2;
+                        line[i as usize] = x;
+                    }
+                    s.write_line(ly, &line);
+                }
+            }
+
+            if ly == 144 {
+                self.frame += 1;
+            }
+
             let lyc = memory.get_io(IoRegs::LYC);
 
             if ly == lyc {
                 memory.set_io(IoRegs::STAT, 0b10);
             }
 
-            memory.set_io(IoRegs::LY, ly);
+            memory.set_io(IoRegs::LY, ly.wrapping_add(1));
         }
     }
 }
