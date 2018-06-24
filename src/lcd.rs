@@ -1,9 +1,9 @@
 use bit_ops::BitGetSet;
 use memory::Memory;
-use memory_values::IoRegs;
+use memory_values::*;
 
 pub trait Screen {
-    fn write_line(&mut self, ly: u8, pixels: &[u8; 160]);
+    fn write_line(&mut self, ly: u8, pixels: &[u8; 256]);
     fn end_frame(&mut self);
 }
 
@@ -63,6 +63,22 @@ impl<'a> LCDRegisters<'a> {
     pub fn is_enabled(&mut self) -> bool {
         self.get_lcdc().get_bit(7)
     }
+
+    pub fn get_bg_tilemap_display_select(&mut self) -> u16 {
+        if self.get_lcdc().get_bit(3) {
+            TILE_MAP_2
+        } else {
+            TILE_MAP_1
+        }
+    }
+
+    pub fn get_tile_data_select(&mut self) -> u16 {
+        if self.get_lcdc().get_bit(4) {
+            TILE_DATA_2
+        } else {
+            TILE_DATA_1
+        }
+    }
 }
 
 pub struct LCD {
@@ -82,6 +98,40 @@ impl LCD {
         }
     }
 
+    fn draw_line(&mut self, regs: &mut LCDRegisters) -> [u8; 256] {
+        let ly = regs.get_ly();
+        let mut line = [0; 256];
+        // Look at each tile on the current line
+        for x in 0..32 {
+            let y = u16::from(ly / 8);
+
+            // Get the index of the tile
+            let tile_map = regs.get_bg_tilemap_display_select();
+            let index = tile_map + x + 32 * y;
+            let tile_index = regs.memory.get_u8(index) as u16;
+
+            // Get the address of the tile
+            let tile_data = regs.get_tile_data_select();
+            let tile_address = tile_data + tile_index * 16;
+            let tile_y_index = u16::from(ly % 8);
+            let line_address = tile_address + tile_y_index * 2;
+
+            let pixels = {
+                let t = regs.memory.get_u16(line_address);
+                t.reverse_bits()
+            };
+
+            // let tile_index = regs.get_bg_tile_map(x, y);
+            for i in 0..8 {
+                let pixel = (pixels >> i*2) & 0b11;
+                let line_index = usize::from(x * 8 + i);
+                // line[line_index] = tile_index as u8;
+                line[line_index] = pixel as u8;
+            }
+        }
+        line
+    }
+
     pub fn tick(&mut self, memory: &mut Memory, cycles: u64, screen: Option<&mut Screen>) {
         let mut regs = LCDRegisters::new(memory);
         let enabled = regs.is_enabled();
@@ -98,11 +148,7 @@ impl LCD {
             let ly = regs.get_ly();
             if let Some(s) = screen {
                 if ly <= 144 {
-                    let mut line = [0; 160];
-                    for i in 0..160 {
-                        let x = (ly.wrapping_add(i)) % 2;
-                        line[i as usize] = x;
-                    }
+                    let line = self.draw_line(&mut regs);
                     s.write_line(ly, &line);
                 }
             }

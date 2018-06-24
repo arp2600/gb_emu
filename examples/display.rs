@@ -7,15 +7,15 @@ use std::str;
 struct DisplayPipe {}
 
 impl Screen for DisplayPipe {
-    fn write_line(&mut self, ly: u8, pixels: &[u8; 160]) {
+    fn write_line(&mut self, ly: u8, pixels: &[u8; 256]) {
         let stdout = io::stdout();
         let mut handle = stdout.lock();
 
         handle.write(b"LINE").unwrap();
         write!(handle, " {} ", ly).unwrap();
-        let mut line = [35; 160];
+        let mut line = [35; 256];
         for (i, pixel) in pixels.iter().enumerate() {
-            line[i as usize] = (pixel + '0' as u8) as u8;
+            line[i as usize] = (pixel + '!' as u8) as u8;
         }
         handle.write(&line).unwrap();
         handle.write(b"\n").unwrap();

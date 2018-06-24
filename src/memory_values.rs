@@ -34,6 +34,11 @@ pub const HRAM_END: usize = 0xfffe;
 
 pub const INTERRUPT_ENABLE_REG: usize = 0xffff;
 
+pub const TILE_MAP_1: u16 = 0x9800;
+pub const TILE_MAP_2: u16 = 0x9c00;
+pub const TILE_DATA_1: u16 =0x8800;
+pub const TILE_DATA_2: u16 =0x8000;
+
 #[derive(Copy, Clone)]
 pub enum IoRegs {
     TIMA = 0xff05,
@@ -43,23 +48,23 @@ pub enum IoRegs {
     IE = 0xffff,
     LCDC = 0xff40,
     STAT = 0xff41,
-    SCY = 0xff42,
-    SCX = 0xff43,
+    // SCY = 0xff42,
+    // SCX = 0xff43,
     LY = 0xff44,
     LYC = 0xff45,
-    WY = 0xff4a,
-    WX = 0xff4b,
-    BGP = 0xff47,
-    OBP0 = 0xff48,
-    OBP1 = 0xff49,
-    DMA = 0xff46,
-    HDMA1 = 0xff51,
-    HDMA2 = 0xff52,
-    HDMA3 = 0xff53,
-    HDMA4 = 0xff54,
-    HDMA5 = 0xff55,
-    BCPS = 0xff68,
-    BCPD = 0xff69,
-    OCPS = 0xff6a,
-    OCPD = 0xff6b,
+    // WY = 0xff4a,
+    // WX = 0xff4b,
+    // BGP = 0xff47,
+    // OBP0 = 0xff48,
+    // OBP1 = 0xff49,
+    // DMA = 0xff46,
+    // HDMA1 = 0xff51,
+    // HDMA2 = 0xff52,
+    // HDMA3 = 0xff53,
+    // HDMA4 = 0xff54,
+    // HDMA5 = 0xff55,
+    // BCPS = 0xff68,
+    // BCPD = 0xff69,
+    // OCPS = 0xff6a,
+    // OCPD = 0xff6b,
 }
