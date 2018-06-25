@@ -90,8 +90,7 @@ impl<'a> LCDRegisters<'a> {
     create_getter!(get_ly, ly, IoRegs::LY);
     create_setter!(set_ly, ly, IoRegs::LY);
 
-    create_getter!(get_lyc, ly, IoRegs::LYC);
-    create_setter!(set_lyc, ly, IoRegs::LYC);
+    create_getter!(get_lyc, lyc, IoRegs::LYC);
 
     create_getter!(get_scy, scy, IoRegs::SCY);
 
