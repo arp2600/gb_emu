@@ -48,7 +48,7 @@ pub enum IoRegs {
     IE = 0xffff,
     LCDC = 0xff40,
     STAT = 0xff41,
-    // SCY = 0xff42,
+    SCY = 0xff42,
     // SCX = 0xff43,
     LY = 0xff44,
     LYC = 0xff45,

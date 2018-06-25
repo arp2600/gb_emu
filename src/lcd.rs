@@ -44,6 +44,7 @@ struct LCDRegisters<'a> {
     ly: Option<u8>,
     lyc: Option<u8>,
     stat: Option<u8>,
+    scy: Option<u8>,
 }
 
 macro_rules! create_getter {
@@ -78,6 +79,7 @@ impl<'a> LCDRegisters<'a> {
             ly: None,
             lyc: None,
             stat: None,
+            scy: None,
         }
     }
 
@@ -88,6 +90,8 @@ impl<'a> LCDRegisters<'a> {
 
     create_getter!(get_lyc, ly, IoRegs::LYC);
     create_setter!(set_lyc, ly, IoRegs::LYC);
+
+    create_getter!(get_scy, scy, IoRegs::SCY);
 
     create_setter!(set_stat, stat, IoRegs::STAT);
 
@@ -134,7 +138,9 @@ impl LCD {
         let mut line = [0; 256];
         // Look at each tile on the current line
         for x in 0..32 {
-            let y = u16::from(ly / 8);
+            let scy = regs.get_scy();
+            let ly_scy = ly.wrapping_add(scy);
+            let y = u16::from(ly_scy / 8);
 
             // Get the index of the tile data
             let tile_map = regs.get_bg_tilemap_display_select();
@@ -146,7 +152,7 @@ impl LCD {
             // Get the address of the tile
             let tile_data_start = regs.get_tile_data_select();
             let tile_address = tile_data_start + tile_data_index * 16;
-            let tile_y_index = u16::from(ly % 8);
+            let tile_y_index = u16::from(ly_scy % 8);
             let line_address = tile_address + tile_y_index * 2;
 
             let pixels = regs.memory.get_u16(line_address);
