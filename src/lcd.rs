@@ -7,6 +7,32 @@ pub trait Screen {
     fn end_frame(&mut self);
 }
 
+struct PixelIterator {
+    i: u8,
+    value: u16,
+}
+
+impl PixelIterator {
+    fn new(value: u16) -> PixelIterator {
+        PixelIterator { i: 0, value }
+    }
+}
+
+impl Iterator for PixelIterator {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i < 8 {
+            let r = self.value >> 14;
+            self.value = self.value << 2;
+            self.i += 1;
+            Some(r as u8)
+        } else {
+            None
+        }
+    }
+}
+
 struct LCDRegisters<'a> {
     memory: &'a mut Memory,
     lcdc: Option<u8>,
@@ -116,16 +142,9 @@ impl LCD {
             let tile_y_index = u16::from(ly % 8);
             let line_address = tile_address + tile_y_index * 2;
 
-            let pixels = {
-                let t = regs.memory.get_u16(line_address);
-                t.reverse_bits()
-            };
-
-            // let tile_index = regs.get_bg_tile_map(x, y);
-            for i in 0..8 {
-                let pixel = (pixels >> i*2) & 0b11;
-                let line_index = usize::from(x * 8 + i);
-                // line[line_index] = tile_index as u8;
+            let pixels = regs.memory.get_u16(line_address);
+            for (i, pixel) in PixelIterator::new(pixels).enumerate() {
+                let line_index = usize::from(x * 8) + i;
                 line[line_index] = pixel as u8;
             }
         }

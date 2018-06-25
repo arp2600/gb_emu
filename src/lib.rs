@@ -1,4 +1,3 @@
-#![feature(reverse_bits)]
 mod bit_ops;
 mod cartridge;
 mod cpu;
