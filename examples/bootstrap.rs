@@ -11,7 +11,7 @@ fn main() {
 
     // emulator.set_tracing(true);
     for _ in 0..3_000_000 {
-        emulator.tick();
+        emulator.tick(None);
     }
 
     let serial_data = emulator.get_serial_data();
