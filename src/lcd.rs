@@ -3,7 +3,7 @@ use memory::Memory;
 use memory_values::*;
 
 pub trait Screen {
-    fn write_line(&mut self, ly: u8, pixels: &[u8; 256]);
+    fn write_line(&mut self, ly: u8, pixels: &[u8; 160]);
     fn end_frame(&mut self);
 }
 
@@ -137,9 +137,9 @@ impl LCD {
         }
     }
 
-    fn draw_line(&mut self, regs: &mut LCDRegisters) -> [u8; 256] {
+    fn draw_line(&mut self, regs: &mut LCDRegisters) -> [u8; 160] {
         let ly = regs.get_ly();
-        let mut line = [0; 256];
+        let mut line = [0; 160];
         let bgp = {
             let x = regs.get_bgp();
             [3 - (x & 0b11),
@@ -148,7 +148,7 @@ impl LCD {
              3 - ((x >> 6) & 0b11)]
         };
         // Look at each tile on the current line
-        for x in 0..32 {
+        for x in 0..(160/8) {
             let scy = regs.get_scy();
             let ly_scy = ly.wrapping_add(scy);
             let y = u16::from(ly_scy / 8);

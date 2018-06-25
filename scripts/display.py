@@ -12,7 +12,7 @@ frames = 0
 
 def get_frame():
     global frames
-    screen_buffer = np.full((144, 256, 3), np.uint8(0))
+    screen_buffer = np.full((144, 160, 3), np.uint8(0))
 
     while True:
         line = emu.stdout.readline().decode("utf-8")
@@ -30,20 +30,15 @@ def get_frame():
             if ly == 144:
                 frames += 1
                 print("Returning frame", frames)
-                x = 0
-                for line in screen_buffer:
-                    for pixel in line:
-                        x = max(x, pixel[0])
-                print("max_pixel =", x)
                 return screen_buffer
 
             if ly < 144:
                 data = line[2]
-                if len(data) != 256:
+                if len(data) != 160:
                     print(data)
                     print(len(data))
                     print(stash)
-                assert len(data) == 256 
+                assert len(data) == 160 
 
                 for i, pixel in enumerate(data):
                     try:
