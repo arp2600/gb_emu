@@ -49,7 +49,11 @@ impl Memory {
     }
 
     fn get_io_indexed(&self, index: usize) -> u8 {
-        self.io[index - IO_START]
+        let value = self.io[index - IO_START];
+        match index {
+            0xff00 => 0x0f,
+            _ => value,
+        }
     }
 
     pub fn get_io(&self, reg: IoRegs) -> u8 {
@@ -69,8 +73,8 @@ impl Memory {
     pub fn set_u8(&mut self, index: u16, value: u8) {
         let index = index as usize;
         match index {
-            ROM_0_START...ROM_0_END => bad_write_panic(index),
-            ROM_N_START...ROM_N_END => bad_write_panic(index),
+            ROM_0_START...ROM_0_END => (),
+            ROM_N_START...ROM_N_END => (),
             VRAM_START...VRAM_END => self.vram[index - VRAM_START] = value,
             EXRAM_START...EXRAM_END => unimplemented!(),
             WRAM_START...WRAM_END => self.wram[index - WRAM_START] = value,
@@ -81,7 +85,7 @@ impl Memory {
             IO_START...IO_END => self.set_io_indexed(index, value),
             HRAM_START...HRAM_END => self.hram[index - HRAM_START] = value,
             INTERRUPT_ENABLE_REG => self.interrupt_enable_register = value,
-            x => bad_write_panic(x),
+            _ => (),
         }
     }
 

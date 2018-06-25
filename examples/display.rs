@@ -28,6 +28,7 @@ fn main() {
     let cartridge_rom = "../ROMs/tetris.gb";
     let boot_rom = "../ROMs/dmg_rom.gb";
     let mut emulator = Emulator::new(Some(boot_rom), cartridge_rom);
+    // let mut emulator = Emulator::new(None, cartridge_rom);
     let mut display = DisplayPipe {};
 
     println!("Starting emulator");

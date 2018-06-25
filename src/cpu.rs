@@ -13,12 +13,14 @@ enum HaltState {
 }
 
 enum Interrupt {
+    VBlank,
     Timer,
 }
 
 impl Interrupt {
     fn get_address(&self) -> u16 {
         match self {
+            Interrupt::VBlank => 0x40,
             Interrupt::Timer => 0x50,
         }
     }
@@ -26,6 +28,7 @@ impl Interrupt {
     fn reset_flag(&self, memory: &mut Memory) {
         let flag = memory.get_io(IoRegs::IF);
         let new_flag = match self {
+            Interrupt::VBlank => flag.reset_bit(0),
             Interrupt::Timer => flag.reset_bit(2),
         };
         memory.set_io(IoRegs::IF, new_flag);
@@ -55,7 +58,9 @@ impl Cpu {
         let interrupt_request = memory.get_io(IoRegs::IF);
         let interrupt_enable = memory.get_io(IoRegs::IE);
         let interrupts = interrupt_request & interrupt_enable;
-        if interrupts.get_bit(2) {
+        if interrupts.get_bit(0) {
+            self.try_interrupt(Interrupt::VBlank, memory);
+        } else if interrupts.get_bit(2) {
             self.try_interrupt(Interrupt::Timer, memory);
         }
     }
@@ -132,7 +137,8 @@ impl Cpu {
 
             match registers.pc {
                 // Ignore screen update
-                0xc37f...0xc388 => (),
+                0x02b2...0x02b6 => (),
+                0x287c...0x2880 => (),
                 _ => {
                     println!(
                         "{:#06x}  {:02x}  {:020}  #  {}",

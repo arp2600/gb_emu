@@ -6,11 +6,11 @@ fn main() {
     // let cartridge_rom = "blargg_test_roms/cpu_instrs/individual/01-special.gb";
     // let cartridge_rom = "blargg_test_roms/cpu_instrs/individual/02-interrupts.gb";
     // let cartridge_rom = "blargg_test_roms/cpu_instrs/individual/06-ld_r_r.gb";
-    let cartridge_rom = "blargg_test_roms/cpu_instrs/individual/05-op_rp.gb";
+    let cartridge_rom = "../ROMs/tetris.gb";
     let mut emulator = Emulator::new(None, cartridge_rom);
 
-    // emulator.set_tracing(true);
-    for _ in 0..3_000_000 {
+    emulator.set_tracing(true);
+    for _ in 0..2_000_000 {
         emulator.tick(None);
     }
 

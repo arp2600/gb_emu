@@ -117,6 +117,11 @@ impl<'a> LCDRegisters<'a> {
             TILE_DATA_1
         }
     }
+
+    pub fn set_interrupt_bit(&mut self) {
+        let if_reg = self.memory.get_io(IoRegs::IF).set_bit(0);
+        self.memory.set_io(IoRegs::IF, if_reg);
+    }
 }
 
 pub struct LCD {
@@ -195,8 +200,9 @@ impl LCD {
                 }
             }
 
-            if ly == 144 {
+            if self.next_ly == 144 {
                 self.frame += 1;
+                regs.set_interrupt_bit();
             }
 
             let lyc = regs.get_lyc();
