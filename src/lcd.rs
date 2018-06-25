@@ -9,12 +9,15 @@ pub trait Screen {
 
 struct PixelIterator {
     i: u8,
-    value: u16,
+    low: u8,
+    high: u8,
 }
 
 impl PixelIterator {
     fn new(value: u16) -> PixelIterator {
-        PixelIterator { i: 0, value }
+        let low = value as u8;
+        let high = (value >> 8) as u8;
+        PixelIterator { i: 0, low, high }
     }
 }
 
@@ -23,10 +26,12 @@ impl Iterator for PixelIterator {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.i < 8 {
-            let r = self.value >> 14;
-            self.value = self.value << 2;
+            let low = (self.low >> 7) & 0b1;
+            let high = (self.high >> 6) & 0b10;
+            self.low = self.low << 1;
+            self.high = self.high << 1;
             self.i += 1;
-            Some(r as u8)
+            Some((low | high) as u8)
         } else {
             None
         }
@@ -131,14 +136,16 @@ impl LCD {
         for x in 0..32 {
             let y = u16::from(ly / 8);
 
-            // Get the index of the tile
+            // Get the index of the tile data
             let tile_map = regs.get_bg_tilemap_display_select();
-            let index = tile_map + x + 32 * y;
-            let tile_index = regs.memory.get_u8(index) as u16;
+            let tile_data_index = {
+                let i = tile_map + x + 32 * y;
+                regs.memory.get_u8(i) as u16
+            };
 
             // Get the address of the tile
-            let tile_data = regs.get_tile_data_select();
-            let tile_address = tile_data + tile_index * 16;
+            let tile_data_start = regs.get_tile_data_select();
+            let tile_address = tile_data_start + tile_data_index * 16;
             let tile_y_index = u16::from(ly % 8);
             let line_address = tile_address + tile_y_index * 2;
 
