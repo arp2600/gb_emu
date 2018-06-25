@@ -45,6 +45,7 @@ struct LCDRegisters<'a> {
     lyc: Option<u8>,
     stat: Option<u8>,
     scy: Option<u8>,
+    bgp: Option<u8>,
 }
 
 macro_rules! create_getter {
@@ -80,6 +81,7 @@ impl<'a> LCDRegisters<'a> {
             lyc: None,
             stat: None,
             scy: None,
+            bgp: None,
         }
     }
 
@@ -92,6 +94,8 @@ impl<'a> LCDRegisters<'a> {
     create_setter!(set_lyc, ly, IoRegs::LYC);
 
     create_getter!(get_scy, scy, IoRegs::SCY);
+
+    create_getter!(get_bgp, bgp, IoRegs::BGP);
 
     create_setter!(set_stat, stat, IoRegs::STAT);
 
@@ -136,6 +140,13 @@ impl LCD {
     fn draw_line(&mut self, regs: &mut LCDRegisters) -> [u8; 256] {
         let ly = regs.get_ly();
         let mut line = [0; 256];
+        let bgp = {
+            let x = regs.get_bgp();
+            [3 - (x & 0b11),
+             3 - ((x >> 2) & 0b11),
+             3 - ((x >> 4) & 0b11),
+             3 - ((x >> 6) & 0b11)]
+        };
         // Look at each tile on the current line
         for x in 0..32 {
             let scy = regs.get_scy();
@@ -158,7 +169,7 @@ impl LCD {
             let pixels = regs.memory.get_u16(line_address);
             for (i, pixel) in PixelIterator::new(pixels).enumerate() {
                 let line_index = usize::from(x * 8) + i;
-                line[line_index] = pixel as u8;
+                line[line_index] = bgp[pixel as usize];
             }
         }
         line

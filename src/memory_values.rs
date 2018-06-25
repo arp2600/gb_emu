@@ -54,7 +54,7 @@ pub enum IoRegs {
     LYC = 0xff45,
     // WY = 0xff4a,
     // WX = 0xff4b,
-    // BGP = 0xff47,
+    BGP = 0xff47,
     // OBP0 = 0xff48,
     // OBP1 = 0xff49,
     // DMA = 0xff46,
