@@ -12,6 +12,7 @@ enum HaltState {
            // Mode3, // IME = 0, IE & IF & 0x1F != 0
 }
 
+#[derive(Clone, Copy)]
 enum Interrupt {
     VBlank,
     Timer,

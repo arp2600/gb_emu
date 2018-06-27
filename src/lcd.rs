@@ -28,8 +28,8 @@ impl Iterator for PixelIterator {
         if self.i < 8 {
             let low = (self.low >> 7) & 0b1;
             let high = (self.high >> 6) & 0b10;
-            self.low = self.low << 1;
-            self.high = self.high << 1;
+            self.low <<= 1;
+            self.high <<= 1;
             self.i += 1;
             Some((low | high) as u8)
         } else {
@@ -98,7 +98,7 @@ impl<'a> LCDRegisters<'a> {
 
     create_setter!(set_stat, stat, IoRegs::STAT);
 
-    pub fn is_enabled(&mut self) -> bool {
+    pub fn check_enabled(&mut self) -> bool {
         self.get_lcdc().get_bit(7)
     }
 
@@ -161,7 +161,7 @@ impl LCD {
             let tile_map = regs.get_bg_tilemap_display_select();
             let tile_data_index = {
                 let i = tile_map + x + 32 * y;
-                regs.memory.get_u8(i) as u16
+                u16::from(regs.memory.get_u8(i))
             };
 
             // Get the address of the tile
@@ -181,7 +181,7 @@ impl LCD {
 
     pub fn tick(&mut self, memory: &mut Memory, cycles: u64, screen: Option<&mut Screen>) {
         let mut regs = LCDRegisters::new(memory);
-        let enabled = regs.is_enabled();
+        let enabled = regs.check_enabled();
         if enabled && !self.enabled {
             self.enabled = true;
             self.update_time = cycles;
