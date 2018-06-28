@@ -254,7 +254,7 @@ mod tests {
             let frame_time = cycles % (456 * 154);
             let test_ly = (frame_time / 456) as u8;
 
-            lcd.tick(&mut memory, cycles);
+            lcd.tick(&mut memory, cycles, |_, _| {});
             let lcd_ly = memory.get_io(IoRegs::LY);
 
             assert_eq!(
