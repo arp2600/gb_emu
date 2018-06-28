@@ -9,12 +9,17 @@ mod registers;
 mod timer;
 use cartridge::Cartridge;
 use cpu::Cpu;
-pub use lcd::Screen;
 use lcd::LCD;
 use memory::Memory;
 use registers::Registers;
 use std::fs;
+use std::ops::FnMut;
 use timer::Timer;
+
+pub enum Command {
+    Continue,
+    Stop,
+}
 
 pub struct Emulator {
     cpu: Cpu,
@@ -47,9 +52,29 @@ impl Emulator {
         }
     }
 
-    pub fn tick(&mut self, screen: Option<&mut Screen>) {
+    pub fn run<F, G>(&mut self, mut draw_fn: F, mut update_fn: G)
+    where
+        F: FnMut(&[u8], u8),
+        G: FnMut() -> Command,
+    {
+        loop {
+            while !self.lcd.is_vblank() {
+                self.tick(&mut draw_fn);
+            }
+            self.lcd.reset_vblank();
+            match update_fn() {
+                Command::Stop => break,
+                Command::Continue => (),
+            }
+        }
+    }
+
+    pub fn tick<F>(&mut self, mut draw_fn: F)
+    where
+        F: FnMut(&[u8], u8),
+    {
         self.lcd
-            .tick(&mut self.memory, self.cpu.get_cycles(), screen);
+            .tick(&mut self.memory, self.cpu.get_cycles(), &mut draw_fn);
         self.cpu.tick(&mut self.memory, self.tracing);
         self.timer.tick(&mut self.memory, self.cpu.get_cycles());
         self.cpu.check_interrupts(&mut self.memory);

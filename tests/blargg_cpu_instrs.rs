@@ -68,7 +68,7 @@ fn run_test_rom(test_rom: &str, max_cycles: u64) {
 
     let mut emulator = Emulator::new(None, test_rom_path.to_str().unwrap());
     for _ in 0..max_cycles {
-        emulator.tick(None)
+        emulator.tick(|_, _| {})
     }
 
     let serial_data = emulator.get_serial_data();
