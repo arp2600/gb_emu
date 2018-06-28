@@ -124,7 +124,6 @@ pub struct LCD {
     enabled: bool,
     frame: u64,
     next_ly: u8,
-    screen_buffer: [u8; 160*144], 
     vblank_flag: bool,
 }
 
@@ -135,13 +134,8 @@ impl LCD {
             enabled: false,
             frame: 0,
             next_ly: 0,
-            screen_buffer: [0; 160*144],
             vblank_flag: false,
         }
-    }
-
-    pub fn get_screen_buffer(&self) -> &[u8] {
-        &self.screen_buffer
     }
 
     pub fn is_vblank(&self) -> bool {
@@ -152,24 +146,25 @@ impl LCD {
         self.vblank_flag = false;
     }
 
-    fn draw_line(&mut self, regs: &mut LCDRegisters) {
+    fn draw_line<F>(&mut self, regs: &mut LCDRegisters, mut draw_fn: F)
+    where
+        F: FnMut(&[u8], u8),
+    {
         let ly = regs.get_ly();
-        let line = {
-            let start = usize::from(ly) * 160;
-            let end = usize::from(start) + 160;
-            &mut self.screen_buffer[start..end]
-        };
+        let mut line = [0; 160];
 
         let bgp = {
             let x = regs.get_bgp();
-            [3 - (x & 0b11),
-             3 - ((x >> 2) & 0b11),
-             3 - ((x >> 4) & 0b11),
-             3 - ((x >> 6) & 0b11)]
+            [
+                3 - (x & 0b11),
+                3 - ((x >> 2) & 0b11),
+                3 - ((x >> 4) & 0b11),
+                3 - ((x >> 6) & 0b11),
+            ]
         };
 
         // Look at each tile on the current line
-        for x in 0..(160/8) {
+        for x in 0..(160 / 8) {
             let scy = regs.get_scy();
             let ly_scy = ly.wrapping_add(scy);
             let y = u16::from(ly_scy / 8);
@@ -193,9 +188,14 @@ impl LCD {
                 line[line_index] = bgp[pixel as usize];
             }
         }
+
+        draw_fn(&line, ly);
     }
 
-    pub fn tick(&mut self, memory: &mut Memory, cycles: u64) {
+    pub fn tick<F>(&mut self, memory: &mut Memory, cycles: u64, mut draw_fn: F)
+    where
+        F: FnMut(&[u8], u8),
+    {
         let mut regs = LCDRegisters::new(memory);
         let enabled = regs.is_enabled();
         if enabled && !self.enabled {
@@ -210,7 +210,7 @@ impl LCD {
 
             let ly = regs.get_ly();
             if ly < 144 {
-                self.draw_line(&mut regs);
+                self.draw_line(&mut regs, &mut draw_fn);
             } else if ly == 144 {
                 self.vblank_flag = true;
             }
