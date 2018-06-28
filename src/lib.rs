@@ -9,7 +9,6 @@ mod registers;
 mod timer;
 use cartridge::Cartridge;
 use cpu::Cpu;
-pub use lcd::Screen;
 use lcd::LCD;
 use memory::Memory;
 use registers::Registers;
@@ -47,12 +46,23 @@ impl Emulator {
         }
     }
 
-    pub fn tick(&mut self, screen: Option<&mut Screen>) {
+    pub fn tick(&mut self) {
         self.lcd
-            .tick(&mut self.memory, self.cpu.get_cycles(), screen);
+            .tick(&mut self.memory, self.cpu.get_cycles());
         self.cpu.tick(&mut self.memory, self.tracing);
         self.timer.tick(&mut self.memory, self.cpu.get_cycles());
         self.cpu.check_interrupts(&mut self.memory);
+    }
+
+    pub fn get_screen_buffer(&self) -> &[u8] {
+        self.lcd.get_screen_buffer()
+    }
+
+    pub fn run_until_vblank(&mut self) {
+        while !self.lcd.is_vblank() {
+            self.tick();
+        }
+        self.lcd.reset_vblank();
     }
 
     pub fn is_boot_rom_enabled(&self) -> bool {

@@ -2,11 +2,6 @@ use bit_ops::BitGetSet;
 use memory::Memory;
 use memory_values::*;
 
-pub trait Screen {
-    fn write_line(&mut self, ly: u8, pixels: &[u8; 160]);
-    fn end_frame(&mut self);
-}
-
 struct PixelIterator {
     i: u8,
     low: u8,
@@ -129,6 +124,8 @@ pub struct LCD {
     enabled: bool,
     frame: u64,
     next_ly: u8,
+    screen_buffer: [u8; 160*144], 
+    vblank_flag: bool,
 }
 
 impl LCD {
@@ -138,12 +135,31 @@ impl LCD {
             enabled: false,
             frame: 0,
             next_ly: 0,
+            screen_buffer: [0; 160*144],
+            vblank_flag: false,
         }
     }
 
-    fn draw_line(&mut self, regs: &mut LCDRegisters) -> [u8; 160] {
+    pub fn get_screen_buffer(&self) -> &[u8] {
+        &self.screen_buffer
+    }
+
+    pub fn is_vblank(&self) -> bool {
+        self.vblank_flag
+    }
+
+    pub fn reset_vblank(&mut self) {
+        self.vblank_flag = false;
+    }
+
+    fn draw_line(&mut self, regs: &mut LCDRegisters) {
         let ly = regs.get_ly();
-        let mut line = [0; 160];
+        let line = {
+            let start = usize::from(ly) * 160;
+            let end = usize::from(start) + 160;
+            &mut self.screen_buffer[start..end]
+        };
+
         let bgp = {
             let x = regs.get_bgp();
             [3 - (x & 0b11),
@@ -151,6 +167,7 @@ impl LCD {
              3 - ((x >> 4) & 0b11),
              3 - ((x >> 6) & 0b11)]
         };
+
         // Look at each tile on the current line
         for x in 0..(160/8) {
             let scy = regs.get_scy();
@@ -176,10 +193,9 @@ impl LCD {
                 line[line_index] = bgp[pixel as usize];
             }
         }
-        line
     }
 
-    pub fn tick(&mut self, memory: &mut Memory, cycles: u64, screen: Option<&mut Screen>) {
+    pub fn tick(&mut self, memory: &mut Memory, cycles: u64) {
         let mut regs = LCDRegisters::new(memory);
         let enabled = regs.is_enabled();
         if enabled && !self.enabled {
@@ -193,11 +209,10 @@ impl LCD {
             self.update_time += 456;
 
             let ly = regs.get_ly();
-            if let Some(s) = screen {
-                if ly <= 144 {
-                    let line = self.draw_line(&mut regs);
-                    s.write_line(ly, &line);
-                }
+            if ly < 144 {
+                self.draw_line(&mut regs);
+            } else if ly == 144 {
+                self.vblank_flag = true;
             }
 
             if self.next_ly == 144 {
@@ -239,7 +254,7 @@ mod tests {
             let frame_time = cycles % (456 * 154);
             let test_ly = (frame_time / 456) as u8;
 
-            lcd.tick(&mut memory, cycles, None);
+            lcd.tick(&mut memory, cycles);
             let lcd_ly = memory.get_io(IoRegs::LY);
 
             assert_eq!(
