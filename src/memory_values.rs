@@ -36,11 +36,14 @@ pub const INTERRUPT_ENABLE_REG: usize = 0xffff;
 
 pub const TILE_MAP_1: u16 = 0x9800;
 pub const TILE_MAP_2: u16 = 0x9c00;
-pub const TILE_DATA_1: u16 =0x8800;
-pub const TILE_DATA_2: u16 =0x8000;
+pub const TILE_DATA_1: u16 = 0x8800;
+pub const TILE_DATA_2: u16 = 0x8000;
+
+pub const JOYP: usize = 0xff00;
 
 #[derive(Copy, Clone)]
 pub enum IoRegs {
+    // JOYP = 0xff00,
     TIMA = 0xff05,
     TMA = 0xff06,
     TAC = 0xff07,

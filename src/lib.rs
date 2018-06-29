@@ -10,6 +10,7 @@ mod timer;
 use cartridge::Cartridge;
 use cpu::Cpu;
 use lcd::LCD;
+pub use memory::JoyPad;
 use memory::Memory;
 use registers::Registers;
 use std::fs;
@@ -55,14 +56,15 @@ impl Emulator {
     pub fn run<F, G>(&mut self, mut draw_fn: F, mut update_fn: G)
     where
         F: FnMut(&[u8], u8),
-        G: FnMut() -> Command,
+        G: FnMut(&mut JoyPad) -> Command,
     {
         loop {
             while !self.lcd.is_vblank() {
                 self.tick(&mut draw_fn);
             }
             self.lcd.reset_vblank();
-            match update_fn() {
+            let joypad = self.memory.get_joypad();
+            match update_fn(joypad) {
                 Command::Stop => break,
                 Command::Continue => (),
             }

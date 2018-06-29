@@ -1,5 +1,81 @@
+use super::bit_ops::BitGetSet;
 use cartridge::Cartridge;
 use memory_values::*;
+
+pub struct JoyPad {
+    buttons: u8,
+    directions: u8,
+    // 0x20 for for buttons, 0x10 for directions
+    // 0x30 and 0x00 ???
+    selection: u8,
+}
+
+fn set_bit(x: u8, bit: u8, state: bool) -> u8 {
+    if state {
+        x | (0b1 << bit)
+    } else {
+        x & !(0b1 << bit)
+    }
+}
+
+impl JoyPad {
+    pub fn set_a(&mut self, state: bool) {
+        self.buttons = set_bit(self.buttons, 0, !state);
+    }
+
+    pub fn set_b(&mut self, state: bool) {
+        self.buttons = set_bit(self.buttons, 1, !state);
+    }
+
+    pub fn set_select(&mut self, state: bool) {
+        self.buttons = set_bit(self.buttons, 2, !state);
+    }
+
+    pub fn set_start(&mut self, state: bool) {
+        self.buttons = set_bit(self.buttons, 3, !state);
+    }
+
+    pub fn set_right(&mut self, state: bool) {
+        self.directions = set_bit(self.directions, 0, !state);
+    }
+
+    pub fn set_left(&mut self, state: bool) {
+        self.directions = set_bit(self.directions, 1, !state);
+    }
+
+    pub fn set_up(&mut self, state: bool) {
+        self.directions = set_bit(self.directions, 2, !state);
+    }
+
+    pub fn set_down(&mut self, state: bool) {
+        self.directions = set_bit(self.directions, 3, !state);
+    }
+
+    fn new() -> JoyPad {
+        JoyPad {
+            buttons: 0x0f,
+            directions: 0x0f,
+            selection: 0x30,
+        }
+    }
+
+    fn set_u8(&mut self, value: u8) {
+        self.selection = value & 0b0011_0000;
+    }
+
+    fn get_u8(&self) -> u8 {
+        let p14 = self.selection.get_bit(4);
+        let p15 = self.selection.get_bit(5);
+
+        if !p15 && p14 {
+            0b1100_1111 & self.buttons
+        } else if p15 && !p14 {
+            0b1100_1111 & self.directions
+        } else {
+            0b1100_1111
+        }
+    }
+}
 
 pub struct Memory {
     boot_rom: Vec<u8>,
@@ -12,6 +88,7 @@ pub struct Memory {
     hram: [u8; HRAM_SIZE],
     interrupt_enable_register: u8,
     serial_data: Vec<u8>,
+    joypad: JoyPad,
 }
 
 impl Memory {
@@ -27,7 +104,12 @@ impl Memory {
             io: [0; IO_SIZE],
             interrupt_enable_register: 0,
             serial_data: Vec::new(),
+            joypad: JoyPad::new(),
         }
+    }
+
+    pub fn get_joypad(&mut self) -> &mut JoyPad {
+        &mut self.joypad
     }
 
     pub fn get_serial_data(&self) -> &[u8] {
@@ -40,6 +122,7 @@ impl Memory {
 
     fn set_io_indexed(&mut self, index: usize, value: u8) {
         match index {
+            JOYP => self.joypad.set_u8(value),
             0xff01 => self.serial_data.push(value),
             0xff50 => self.boot_rom_enabled = false,
             _ => (),
@@ -51,13 +134,15 @@ impl Memory {
     fn get_io_indexed(&self, index: usize) -> u8 {
         let value = self.io[index - IO_START];
         match index {
-            0xff00 => 0x0f,
+            JOYP => self.joypad.get_u8(),
             _ => value,
         }
     }
 
     pub fn get_io(&self, reg: IoRegs) -> u8 {
         match reg {
+            // IoRegs is not in normal io range
+            // so is not accessible in get_io_indexed
             IoRegs::IE => self.interrupt_enable_register,
             _ => self.get_io_indexed(reg as usize),
         }
@@ -65,6 +150,8 @@ impl Memory {
 
     pub fn set_io(&mut self, reg: IoRegs, value: u8) {
         match reg {
+            // IoRegs is not in normal io range
+            // so is not accessible in set_io_indexed
             IoRegs::IE => self.interrupt_enable_register = value,
             _ => self.set_io_indexed(reg as usize, value),
         }
