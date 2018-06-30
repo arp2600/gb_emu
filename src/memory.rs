@@ -171,7 +171,16 @@ impl Memory {
             OAM_START...OAM_END => self.oam[index - OAM_START] = value,
             IO_START...IO_END => self.set_io_indexed(index, value),
             HRAM_START...HRAM_END => self.hram[index - HRAM_START] = value,
-            INTERRUPT_ENABLE_REG => self.interrupt_enable_register = value,
+            INTERRUPT_ENABLE_REG => {
+                self.interrupt_enable_register = value;
+                if value.get_bit(1) {
+                    eprintln!("Warning: Lcd STAT interrupt not implemented");
+                } else if value.get_bit(3) {
+                    eprintln!("Warning: Serial interrupt not implemented");
+                } else if value.get_bit(4) {
+                    eprintln!("Warning: Joypad interrupt not implemented");
+                }
+            }
             _ => (),
         }
     }
