@@ -35,52 +35,6 @@ impl LCD {
         self.vblank_flag = false;
     }
 
-    fn draw_line<F>(&mut self, regs: &mut LCDRegisters, mut draw_fn: F)
-    where
-        F: FnMut(&[u8], u8),
-    {
-        let ly = regs.get_ly();
-        let mut line = [0; 160];
-
-        let bgp = {
-            let x = regs.get_bgp();
-            [
-                3 - (x & 0b11),
-                3 - ((x >> 2) & 0b11),
-                3 - ((x >> 4) & 0b11),
-                3 - ((x >> 6) & 0b11),
-            ]
-        };
-
-        // Look at each tile on the current line
-        for x in 0..(160 / 8) {
-            let scy = regs.get_scy();
-            let ly_scy = ly.wrapping_add(scy);
-            let y = u16::from(ly_scy / 8);
-
-            // Get the index of the tile data
-            let tile_map = regs.get_bg_tilemap_display_select();
-            let tile_data_index = {
-                let i = tile_map + x + 32 * y;
-                u16::from(regs.memory.get_u8(i))
-            };
-
-            // Get the address of the tile
-            let tile_data_start = regs.get_tile_data_select();
-            let tile_address = tile_data_start + tile_data_index * 16;
-            let tile_y_index = u16::from(ly_scy % 8);
-            let line_address = tile_address + tile_y_index * 2;
-
-            let pixels = regs.memory.get_u16(line_address);
-            for (i, pixel) in PixelIterator::new(pixels).enumerate() {
-                let line_index = usize::from(x * 8) + i;
-                line[line_index] = bgp[pixel as usize];
-            }
-        }
-
-        draw_fn(&line, ly);
-    }
-
     pub fn tick<F>(&mut self, memory: &mut Memory, cycles: u64, mut draw_fn: F)
     where
         F: FnMut(&[u8], u8),
@@ -100,7 +54,7 @@ impl LCD {
 
             let ly = regs.get_ly();
             if ly < 144 {
-                self.draw_line(&mut regs, &mut draw_fn);
+                draw_line(&mut regs, &mut draw_fn);
             } else if ly == 144 {
                 self.vblank_flag = true;
             }
@@ -122,6 +76,60 @@ impl LCD {
             self.mode_updater.update(&mut regs, cycles);
         }
     }
+}
+
+fn create_bgp_data(bgp_value: u8) -> [u8; 4] {
+    [
+        3 - (bgp_value & 0b11),
+        3 - ((bgp_value >> 2) & 0b11),
+        3 - ((bgp_value >> 4) & 0b11),
+        3 - ((bgp_value >> 6) & 0b11),
+    ]
+}
+
+fn get_bg_tile_index (x: u16, y: u16, regs: &mut LCDRegisters) -> u16 {
+    let tile_map = regs.get_bg_tilemap_display_select();
+    let i = tile_map + x + 32 * y;
+    u16::from(regs.memory.get_u8(i))
+}
+
+fn draw_bg(regs: &mut LCDRegisters, line: &mut[u8; 160]) {
+    let ly = regs.get_ly();
+    let bgp = create_bgp_data(regs.get_bgp());
+
+    // Look at each tile on the current line
+    for x in 0..(160 / 8) {
+        let scy = regs.get_scy();
+        let ly_scy = ly.wrapping_add(scy);
+        let y = u16::from(ly_scy / 8);
+
+        // Get the index of the tile data
+        let tile_data_index = get_bg_tile_index(x, y, regs);
+
+        // Get the address of the tile
+        let tile_data_start = regs.get_tile_data_select();
+        let tile_address = tile_data_start + tile_data_index * 16;
+        let tile_y_index = u16::from(ly_scy % 8);
+        let line_address = tile_address + tile_y_index * 2;
+
+        let pixels = regs.memory.get_u16(line_address);
+        for (i, pixel) in PixelIterator::new(pixels).enumerate() {
+            let line_index = usize::from(x * 8) + i;
+            line[line_index] = bgp[pixel as usize];
+        }
+    }
+}
+
+fn draw_line<F>(regs: &mut LCDRegisters, mut draw_fn: F)
+where
+    F: FnMut(&[u8], u8),
+{
+    let mut line = [0; 160];
+
+    draw_bg(regs, &mut line);
+
+    let ly = regs.get_ly();
+    draw_fn(&line, ly);
 }
 
 #[cfg(test)]
