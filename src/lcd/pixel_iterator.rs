@@ -28,4 +28,3 @@ impl Iterator for PixelIterator {
         }
     }
 }
-

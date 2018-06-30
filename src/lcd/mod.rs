@@ -1,8 +1,8 @@
 mod lcd_registers;
 mod pixel_iterator;
-use memory::Memory;
 use self::lcd_registers::LCDRegisters;
 use self::pixel_iterator::PixelIterator;
+use memory::Memory;
 
 pub struct LCD {
     update_time: u64,
