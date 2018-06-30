@@ -1,138 +1,10 @@
-use bit_ops::BitGetSet;
+mod lcd_registers;
+mod mode_updater;
+mod pixel_iterator;
+use self::lcd_registers::LCDRegisters;
+use self::mode_updater::ModeUpdater;
+use self::pixel_iterator::PixelIterator;
 use memory::Memory;
-use memory_values::*;
-
-struct PixelIterator {
-    i: u8,
-    low: u8,
-    high: u8,
-}
-
-impl PixelIterator {
-    fn new(value: u16) -> PixelIterator {
-        let low = value as u8;
-        let high = (value >> 8) as u8;
-        PixelIterator { i: 0, low, high }
-    }
-}
-
-impl Iterator for PixelIterator {
-    type Item = u8;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.i < 8 {
-            let low = (self.low >> 7) & 0b1;
-            let high = (self.high >> 6) & 0b10;
-            self.low <<= 1;
-            self.high <<= 1;
-            self.i += 1;
-            Some((low | high) as u8)
-        } else {
-            None
-        }
-    }
-}
-
-struct LCDRegisters<'a> {
-    memory: &'a mut Memory,
-    lcdc: Option<u8>,
-    ly: Option<u8>,
-    lyc: Option<u8>,
-    stat: Option<u8>,
-    scy: Option<u8>,
-    bgp: Option<u8>,
-}
-
-macro_rules! create_getter {
-    ( $name:ident, $member:ident, $location:expr ) => {
-        pub fn $name(&mut self) -> u8 {
-            match self.$member {
-                Some(x) => x,
-                None => {
-                    let x = self.memory.get_io($location);
-                    self.$member = Some(x);
-                    x
-                }
-            }
-        }
-    };
-}
-
-macro_rules! create_setter {
-    ( $name:ident, $member:ident, $location:expr ) => {
-        pub fn $name(&mut self, value: u8) {
-            self.$member = Some(value);
-            self.memory.set_io($location, value);
-        }
-    };
-}
-
-impl<'a> LCDRegisters<'a> {
-    fn new(memory: &mut Memory) -> LCDRegisters {
-        LCDRegisters {
-            memory,
-            lcdc: None,
-            ly: None,
-            lyc: None,
-            stat: None,
-            scy: None,
-            bgp: None,
-        }
-    }
-
-    create_getter!(get_lcdc, lcdc, IoRegs::LCDC);
-
-    create_getter!(get_ly, ly, IoRegs::LY);
-    create_setter!(set_ly, ly, IoRegs::LY);
-
-    create_getter!(get_lyc, lyc, IoRegs::LYC);
-
-    create_getter!(get_scy, scy, IoRegs::SCY);
-
-    create_getter!(get_bgp, bgp, IoRegs::BGP);
-
-    create_getter!(get_stat, stat, IoRegs::STAT);
-    create_setter!(set_stat, stat, IoRegs::STAT);
-
-    pub fn check_enabled(&mut self) -> bool {
-        self.get_lcdc().get_bit(7)
-    }
-
-    pub fn get_bg_tilemap_display_select(&mut self) -> u16 {
-        if self.get_lcdc().get_bit(3) {
-            TILE_MAP_2
-        } else {
-            TILE_MAP_1
-        }
-    }
-
-    pub fn get_tile_data_select(&mut self) -> u16 {
-        if self.get_lcdc().get_bit(4) {
-            TILE_DATA_2
-        } else {
-            TILE_DATA_1
-        }
-    }
-
-    pub fn set_interrupt_bit(&mut self) {
-        let if_reg = self.memory.get_io(IoRegs::IF).set_bit(0);
-        self.memory.set_io(IoRegs::IF, if_reg);
-    }
-
-    pub fn set_lcd_mode(&mut self, mode: u8) {
-        let stat = self.get_stat();
-        self.set_stat(stat & 0b1111_1100 | mode & 0b11);
-    }
-
-    pub fn set_coincidence_flag(&mut self, state: bool) {
-        let stat = self.get_stat();
-        if state {
-            self.set_stat(stat.set_bit(2));
-        } else {
-            self.set_stat(stat.reset_bit(2));
-        }
-    }
-}
 
 pub struct LCD {
     update_time: u64,
@@ -140,8 +12,7 @@ pub struct LCD {
     frame: u64,
     next_ly: u8,
     vblank_flag: bool,
-    mode_state: u8,
-    mode_update_time: u64,
+    mode_updater: ModeUpdater,
 }
 
 impl LCD {
@@ -152,8 +23,7 @@ impl LCD {
             frame: 0,
             next_ly: 0,
             vblank_flag: false,
-            mode_state: 0,
-            mode_update_time: 0,
+            mode_updater: Default::default(),
         }
     }
 
@@ -220,8 +90,7 @@ impl LCD {
         if enabled && !self.enabled {
             self.enabled = true;
             self.update_time = cycles;
-            self.mode_update_time = cycles;
-            self.mode_state = 0;
+            self.mode_updater.init(cycles);
             self.next_ly = 0;
             regs.set_ly(0);
         }
@@ -249,47 +118,8 @@ impl LCD {
             self.next_ly = self.next_ly.wrapping_add(1) % 154;
         }
 
-        if self.enabled && cycles >= self.mode_update_time {
-            self.update_mode(&mut regs);
-        }
-    }
-
-    fn update_mode(&mut self, regs: &mut LCDRegisters) {
-        // Ad-hoc state machine
-        match self.mode_state {
-            0 => {
-                regs.set_lcd_mode(0);
-                self.mode_update_time += 4;
-                let ly = regs.get_ly();
-                if ly == 144 {
-                    self.mode_state = 4;
-                } else {
-                    self.mode_state = 1;
-                }
-            }
-            1 => {
-                regs.set_lcd_mode(2);
-                self.mode_state = 2;
-                self.mode_update_time += 80;
-            }
-            2 => {
-                regs.set_lcd_mode(3);
-                self.mode_state = 3;
-                // About 41 micro seconds
-                // from pandocs
-                self.mode_update_time += 172;
-            }
-            3 => {
-                regs.set_lcd_mode(0);
-                self.mode_update_time += 200;
-                self.mode_state = 0;
-            }
-            4 => {
-                regs.set_lcd_mode(1);
-                self.mode_update_time += 4556;
-                self.mode_state = 0;
-            }
-            _ => unreachable!(),
+        if self.enabled {
+            self.mode_updater.update(&mut regs, cycles);
         }
     }
 }
