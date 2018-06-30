@@ -1,6 +1,8 @@
 mod lcd_registers;
+mod mode_updater;
 mod pixel_iterator;
 use self::lcd_registers::LCDRegisters;
+use self::mode_updater::ModeUpdater;
 use self::pixel_iterator::PixelIterator;
 use memory::Memory;
 
@@ -10,8 +12,7 @@ pub struct LCD {
     frame: u64,
     next_ly: u8,
     vblank_flag: bool,
-    mode_state: u8,
-    mode_update_time: u64,
+    mode_updater: ModeUpdater,
 }
 
 impl LCD {
@@ -22,8 +23,7 @@ impl LCD {
             frame: 0,
             next_ly: 0,
             vblank_flag: false,
-            mode_state: 0,
-            mode_update_time: 0,
+            mode_updater: Default::default(),
         }
     }
 
@@ -90,8 +90,7 @@ impl LCD {
         if enabled && !self.enabled {
             self.enabled = true;
             self.update_time = cycles;
-            self.mode_update_time = cycles;
-            self.mode_state = 0;
+            self.mode_updater.init(cycles);
             self.next_ly = 0;
             regs.set_ly(0);
         }
@@ -119,47 +118,8 @@ impl LCD {
             self.next_ly = self.next_ly.wrapping_add(1) % 154;
         }
 
-        if self.enabled && cycles >= self.mode_update_time {
-            self.update_mode(&mut regs);
-        }
-    }
-
-    fn update_mode(&mut self, regs: &mut LCDRegisters) {
-        // Ad-hoc state machine
-        match self.mode_state {
-            0 => {
-                regs.set_lcd_mode(0);
-                self.mode_update_time += 4;
-                let ly = regs.get_ly();
-                if ly == 144 {
-                    self.mode_state = 4;
-                } else {
-                    self.mode_state = 1;
-                }
-            }
-            1 => {
-                regs.set_lcd_mode(2);
-                self.mode_state = 2;
-                self.mode_update_time += 80;
-            }
-            2 => {
-                regs.set_lcd_mode(3);
-                self.mode_state = 3;
-                // About 41 micro seconds
-                // from pandocs
-                self.mode_update_time += 172;
-            }
-            3 => {
-                regs.set_lcd_mode(0);
-                self.mode_update_time += 200;
-                self.mode_state = 0;
-            }
-            4 => {
-                regs.set_lcd_mode(1);
-                self.mode_update_time += 4556;
-                self.mode_state = 0;
-            }
-            _ => unreachable!(),
+        if self.enabled {
+            self.mode_updater.update(&mut regs, cycles);
         }
     }
 }
