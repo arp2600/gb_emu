@@ -91,6 +91,7 @@ impl<'a> LCDRegisters<'a> {
 
     create_getter!(get_bgp, bgp, IoRegs::BGP);
 
+    create_getter!(get_stat, stat, IoRegs::STAT);
     create_setter!(set_stat, stat, IoRegs::STAT);
 
     pub fn check_enabled(&mut self) -> bool {
@@ -117,6 +118,20 @@ impl<'a> LCDRegisters<'a> {
         let if_reg = self.memory.get_io(IoRegs::IF).set_bit(0);
         self.memory.set_io(IoRegs::IF, if_reg);
     }
+
+    pub fn set_lcd_mode(&mut self, mode: u8) {
+        let stat = self.get_stat();
+        self.set_stat(stat & 0b1111_1100 | mode & 0b11);
+    }
+
+    pub fn set_coincidence_flag(&mut self, state: bool) {
+        let stat = self.get_stat();
+        if state {
+            self.set_stat(stat.set_bit(2));
+        } else {
+            self.set_stat(stat.reset_bit(2));
+        }
+    }
 }
 
 pub struct LCD {
@@ -125,6 +140,8 @@ pub struct LCD {
     frame: u64,
     next_ly: u8,
     vblank_flag: bool,
+    mode_state: u8,
+    mode_update_time: u64,
 }
 
 impl LCD {
@@ -135,6 +152,8 @@ impl LCD {
             frame: 0,
             next_ly: 0,
             vblank_flag: false,
+            mode_state: 0,
+            mode_update_time: 0,
         }
     }
 
@@ -201,6 +220,8 @@ impl LCD {
         if enabled && !self.enabled {
             self.enabled = true;
             self.update_time = cycles;
+            self.mode_update_time = cycles;
+            self.mode_state = 0;
             self.next_ly = 0;
             regs.set_ly(0);
         }
@@ -222,10 +243,53 @@ impl LCD {
 
             let lyc = regs.get_lyc();
 
-            regs.set_stat(if ly == lyc { 0b10 } else { 0 });
+            regs.set_coincidence_flag(ly == lyc);
 
             regs.set_ly(self.next_ly);
             self.next_ly = self.next_ly.wrapping_add(1) % 154;
+        }
+
+        if self.enabled && cycles >= self.mode_update_time {
+            self.update_mode(&mut regs);
+        }
+    }
+
+    fn update_mode(&mut self, regs: &mut LCDRegisters) {
+        // Ad-hoc state machine
+        match self.mode_state {
+            0 => {
+                regs.set_lcd_mode(0);
+                self.mode_update_time += 4;
+                let ly = regs.get_ly();
+                if ly == 144 {
+                    self.mode_state = 4;
+                } else {
+                    self.mode_state = 1;
+                }
+            }
+            1 => {
+                regs.set_lcd_mode(2);
+                self.mode_state = 2;
+                self.mode_update_time += 80;
+            }
+            2 => {
+                regs.set_lcd_mode(3);
+                self.mode_state = 3;
+                // About 41 micro seconds
+                // from pandocs
+                self.mode_update_time += 172;
+            }
+            3 => {
+                regs.set_lcd_mode(0);
+                self.mode_update_time += 200;
+                self.mode_state = 0;
+            }
+            4 => {
+                regs.set_lcd_mode(1);
+                self.mode_update_time += 4556;
+                self.mode_state = 0;
+            }
+            _ => unreachable!(),
         }
     }
 }
@@ -239,7 +303,7 @@ mod tests {
 
     // Check lcd against old algorithm for calculating ly register
     #[test]
-    fn lcd_test() {
+    fn ly_timing() {
         let mut memory = {
             let boot_rom = Vec::new();
             let cartridge = Cartridge::create_dummy();
@@ -262,6 +326,108 @@ mod tests {
                 "lcd {} != test {} at cycles {}",
                 lcd_ly, test_ly, cycles
             );
+        }
+    }
+
+    // Check stat mode timing matches
+    // timing described in
+    //   The Cycle-Accurate
+    //   Game Boy Docs
+    //   page 32
+    #[test]
+    fn stat_mode_timing() {
+        let mut memory = {
+            let boot_rom = Vec::new();
+            let cartridge = Cartridge::create_dummy();
+            Memory::new(boot_rom, cartridge)
+        };
+
+        let mut lcd = LCD::new();
+
+        memory.set_io(IoRegs::LCDC, 0b1000_0000);
+
+        {
+            let stat = memory.get_io(IoRegs::STAT);
+            let ly = memory.get_io(IoRegs::LY);
+            assert_eq!(stat & 0b11, 0);
+            assert_eq!(ly, 0);
+        }
+
+        for frame in 0..10 {
+            test_stat_mode_frame(&mut lcd, &mut memory, frame);
+        }
+    }
+
+    fn test_stat_mode_frame(lcd: &mut LCD, memory: &mut Memory, frame_num: u64) {
+        let base_cycles = frame_num * 154 * 456;
+        // Test line 0 to 143 timings
+        for line in 0..144 {
+            let cycles = line * 456 + base_cycles;
+            // Mode 0 for first 4 cycles
+            for c in cycles..(cycles + 4) {
+                lcd.tick(memory, c, |_, _| {});
+                let stat = memory.get_io(IoRegs::STAT);
+                let ly = memory.get_io(IoRegs::LY);
+                assert_eq!(stat & 0b11, 0);
+                assert_eq!(ly as u64, line);
+            }
+            // Test line 0 timings
+            for c in (cycles + 4)..(cycles + 84) {
+                lcd.tick(memory, c, |_, _| {});
+                let stat = memory.get_io(IoRegs::STAT);
+                let ly = memory.get_io(IoRegs::LY);
+                assert_eq!(stat & 0b11, 2);
+                assert_eq!(ly as u64, line);
+            }
+            {
+                // Mode 3 for indefinate time starting at 84
+                lcd.tick(memory, cycles + 84, |_, _| {});
+                let stat = memory.get_io(IoRegs::STAT);
+                let ly = memory.get_io(IoRegs::LY);
+                assert_eq!(stat & 0b11, 3);
+                assert_eq!(ly as u64, line);
+            }
+            // By 448, mode should be 0, and should remain till end of scanline
+            for c in (cycles + 448)..(cycles + 456) {
+                lcd.tick(memory, c, |_, _| {});
+                let stat = memory.get_io(IoRegs::STAT);
+                let ly = memory.get_io(IoRegs::LY);
+                assert_eq!(stat & 0b11, 0);
+                assert_eq!(ly as u64, line);
+            }
+        }
+        // Test line 144 timings
+        {
+            let line = 144;
+            let cycles = line * 456 + base_cycles;
+            // Mode 0 for first 4 cycles
+            for c in cycles..(cycles + 4) {
+                lcd.tick(memory, c, |_, _| {});
+                let stat = memory.get_io(IoRegs::STAT);
+                let ly = memory.get_io(IoRegs::LY);
+                assert_eq!(stat & 0b11, 0);
+                assert_eq!(ly as u64, line);
+            }
+            // Mode 1 for remaining cycles
+            for c in (cycles + 4)..(cycles + 456) {
+                lcd.tick(memory, c, |_, _| {});
+                let stat = memory.get_io(IoRegs::STAT);
+                let ly = memory.get_io(IoRegs::LY);
+                assert_eq!(stat & 0b11, 1);
+                assert_eq!(ly as u64, line);
+            }
+        }
+        // Test line 145 to 153 timings
+        for line in 145..=153 {
+            let cycles = line * 456 + base_cycles;
+            // Mode 1 for all cycles
+            for c in cycles..(cycles + 456) {
+                lcd.tick(memory, c, |_, _| {});
+                let stat = memory.get_io(IoRegs::STAT);
+                let ly = memory.get_io(IoRegs::LY);
+                assert_eq!(stat & 0b11, 1);
+                assert_eq!(ly as u64, line);
+            }
         }
     }
 }
