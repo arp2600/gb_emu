@@ -2,6 +2,42 @@ use bit_ops::BitGetSet;
 use memory::Memory;
 use memory_values::*;
 
+pub struct DrawData<'a> {
+    pub ly: u8,
+    pub bgp: u8,
+    pub scy: u8,
+    lcdc: u8,
+    pub memory: &'a Memory,
+}
+
+impl<'a> DrawData<'a> {
+    pub fn new(regs: &'a mut LCDRegisters) -> DrawData<'a> {
+        let ly = regs.get_ly();
+        let bgp = regs.get_bgp();
+        let scy = regs.get_scy();
+        let lcdc = regs.get_lcdc();
+        let memory = &regs.memory;
+
+        DrawData { ly, bgp, scy, lcdc, memory }
+    }
+
+    pub fn get_bg_tilemap_display_select(&self) -> u16 {
+        if self.lcdc.get_bit(3) {
+            TILE_MAP_2
+        } else {
+            TILE_MAP_1
+        }
+    }
+
+    pub fn get_tile_data_select(&self) -> u16 {
+        if self.lcdc.get_bit(4) {
+            TILE_DATA_2
+        } else {
+            TILE_DATA_1
+        }
+    }
+}
+
 pub struct LCDRegisters<'a> {
     pub memory: &'a mut Memory,
     lcdc: Option<u8>,
@@ -65,22 +101,6 @@ impl<'a> LCDRegisters<'a> {
 
     pub fn check_enabled(&mut self) -> bool {
         self.get_lcdc().get_bit(7)
-    }
-
-    pub fn get_bg_tilemap_display_select(&mut self) -> u16 {
-        if self.get_lcdc().get_bit(3) {
-            TILE_MAP_2
-        } else {
-            TILE_MAP_1
-        }
-    }
-
-    pub fn get_tile_data_select(&mut self) -> u16 {
-        if self.get_lcdc().get_bit(4) {
-            TILE_DATA_2
-        } else {
-            TILE_DATA_1
-        }
     }
 
     pub fn set_interrupt_bit(&mut self) {

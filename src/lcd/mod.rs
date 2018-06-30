@@ -1,7 +1,7 @@
 mod lcd_registers;
 mod mode_updater;
 mod pixel_iterator;
-use self::lcd_registers::LCDRegisters;
+use self::lcd_registers::{LCDRegisters, DrawData};
 use self::mode_updater::ModeUpdater;
 use self::pixel_iterator::PixelIterator;
 use memory::Memory;
@@ -54,7 +54,8 @@ impl LCD {
 
             let ly = regs.get_ly();
             if ly < 144 {
-                draw_line(&mut regs, &mut draw_fn);
+                let draw_data = DrawData::new(&mut regs);
+                draw_line(&draw_data, &mut draw_fn);
             } else if ly == 144 {
                 self.vblank_flag = true;
             }
@@ -87,19 +88,19 @@ fn create_bgp_data(bgp_value: u8) -> [u8; 4] {
     ]
 }
 
-fn get_bg_tile_index (x: u16, y: u16, regs: &mut LCDRegisters) -> u16 {
+fn get_bg_tile_index (x: u16, y: u16, regs: &DrawData) -> u16 {
     let tile_map = regs.get_bg_tilemap_display_select();
     let i = tile_map + x + 32 * y;
     u16::from(regs.memory.get_u8(i))
 }
 
-fn draw_bg(regs: &mut LCDRegisters, line: &mut[u8; 160]) {
-    let ly = regs.get_ly();
-    let bgp = create_bgp_data(regs.get_bgp());
+fn draw_bg(regs: &DrawData, line: &mut[u8; 160]) {
+    let ly = regs.ly;
+    let bgp = create_bgp_data(regs.bgp);
 
     // Look at each tile on the current line
     for x in 0..(160 / 8) {
-        let scy = regs.get_scy();
+        let scy = regs.scy;
         let ly_scy = ly.wrapping_add(scy);
         let y = u16::from(ly_scy / 8);
 
@@ -120,7 +121,7 @@ fn draw_bg(regs: &mut LCDRegisters, line: &mut[u8; 160]) {
     }
 }
 
-fn draw_line<F>(regs: &mut LCDRegisters, mut draw_fn: F)
+fn draw_line<F>(regs: &DrawData, mut draw_fn: F)
 where
     F: FnMut(&[u8], u8),
 {
@@ -128,7 +129,7 @@ where
 
     draw_bg(regs, &mut line);
 
-    let ly = regs.get_ly();
+    let ly = regs.ly;
     draw_fn(&line, ly);
 }
 
