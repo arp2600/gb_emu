@@ -1,7 +1,7 @@
 use super::bit_ops::BitGetSet;
 use super::cpu;
 use super::memory::Memory;
-use super::memory_values::IoRegs;
+use super::memory_values::io_regs;
 
 pub struct Timer {
     enabled: bool,
@@ -24,13 +24,13 @@ impl Timer {
             self.update_time += self.cpu_cycles_per_tick();
 
             if tima == 255 {
-                memory.set_io(IoRegs::TIMA, tma);
+                memory.set_io(io_regs::TIMA, tma);
                 // println!("TIMA set to TMA({})", tma);
-                let if_reg = memory.get_io(IoRegs::IF).set_bit(2);
-                memory.set_io(IoRegs::IF, if_reg);
+                let if_reg = memory.get_io(io_regs::IF).set_bit(2);
+                memory.set_io(io_regs::IF, if_reg);
             } else {
                 // println!("TIMA set to {}", tima + 1);
-                memory.set_io(IoRegs::TIMA, tima + 1);
+                memory.set_io(io_regs::TIMA, tima + 1);
             }
         }
     }
@@ -40,9 +40,9 @@ impl Timer {
     }
 
     fn read_registers(&mut self, memory: &mut Memory, cycles: u64) -> (u8, u8) {
-        let tima = memory.get_io(IoRegs::TIMA);
-        let tma = memory.get_io(IoRegs::TMA);
-        let tac = memory.get_io(IoRegs::TAC);
+        let tima = memory.get_io(io_regs::TIMA);
+        let tma = memory.get_io(io_regs::TMA);
+        let tac = memory.get_io(io_regs::TAC);
 
         let enabled = tac.get_bit(2);
         let input_clock = match tac & 0b11 {
