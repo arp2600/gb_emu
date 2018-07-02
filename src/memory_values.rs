@@ -38,8 +38,11 @@ pub const TILE_MAP_1: u16 = 0x9800;
 pub const TILE_MAP_2: u16 = 0x9c00;
 pub const TILE_DATA_1: u16 = 0x8800;
 pub const TILE_DATA_2: u16 = 0x8000;
+pub const SPRITE_PATTERN_TABLE: u16 = 0x8000;
+pub const SPRITE_ATTRIBUTE_TABLE: u16 = 0xfe00;
 
 pub const JOYP: usize = 0xff00;
+pub const STAT: usize = 0xff41;
 
 #[derive(Copy, Clone)]
 pub enum IoRegs {

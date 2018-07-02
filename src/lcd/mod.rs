@@ -5,6 +5,7 @@ use self::lcd_registers::{LCDRegisters, DrawData};
 use self::mode_updater::ModeUpdater;
 use self::pixel_iterator::PixelIterator;
 use memory::Memory;
+use memory_values::*;
 
 pub struct LCD {
     update_time: u64,
@@ -121,6 +122,21 @@ fn draw_bg(regs: &DrawData, line: &mut[u8; 160]) {
     }
 }
 
+fn draw_sprites(regs: &DrawData, line: &mut[u8; 160]) {
+    if !regs.are_sprites_enabled() {
+        return;
+    }
+
+    for i in 0..40 {
+        let oam_index = SPRITE_ATTRIBUTE_TABLE + i * 4;
+        let y = regs.memory.get_u8(oam_index);
+        let x = regs.memory.get_u8(oam_index + 1);
+        if y != 0 || x != 0 {
+            println!("i {} {}", x, y);
+        }
+    }
+}
+
 fn draw_line<F>(regs: &DrawData, mut draw_fn: F)
 where
     F: FnMut(&[u8], u8),
@@ -128,6 +144,7 @@ where
     let mut line = [0; 160];
 
     draw_bg(regs, &mut line);
+    draw_sprites(regs, &mut line);
 
     let ly = regs.ly;
     draw_fn(&line, ly);
@@ -151,7 +168,8 @@ mod tests {
 
         let mut lcd = LCD::new();
 
-        memory.set_io(IoRegs::LCDC, 0b1000_0000);
+        // memory.set_io(IoRegs::LCDC, 0b1000_0000);
+        memory.set_lcdc(0b1000_0000);
         // Run for 10 frames
         for cycles in 0..(70224 * 10) {
             let frame_time = cycles % (456 * 154);
@@ -183,7 +201,8 @@ mod tests {
 
         let mut lcd = LCD::new();
 
-        memory.set_io(IoRegs::LCDC, 0b1000_0000);
+        // memory.set_io(IoRegs::LCDC, 0b1000_0000);
+        memory.set_lcdc(0b1000_0000);
 
         {
             let stat = memory.get_io(IoRegs::STAT);

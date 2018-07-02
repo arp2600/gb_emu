@@ -108,6 +108,10 @@ impl Memory {
         }
     }
 
+    pub fn set_stat(&mut self, value: u8) {
+        self.io[STAT - IO_START] = value;
+    }
+
     pub fn get_joypad(&mut self) -> &mut JoyPad {
         &mut self.joypad
     }
@@ -128,7 +132,11 @@ impl Memory {
             _ => (),
         }
 
-        self.io[index - IO_START] = value;
+        if index == STAT {
+            self.io[index - IO_START] = value & 0b0111_1000;
+        } else {
+            self.io[index - IO_START] = value;
+        }
     }
 
     fn get_io_indexed(&self, index: usize) -> u8 {
@@ -168,7 +176,12 @@ impl Memory {
             WRAM_ECHO_START...WRAM_ECHO_END => {
                 self.wram[index - WRAM_ECHO_START] = value;
             }
-            OAM_START...OAM_END => self.oam[index - OAM_START] = value,
+            OAM_START...OAM_END => {
+                if value != 0 {
+                    println!("OAM {:#06x} set to {:#04x}", index, value);
+                }
+                self.oam[index - OAM_START] = value;
+            }
             IO_START...IO_END => self.set_io_indexed(index, value),
             HRAM_START...HRAM_END => self.hram[index - HRAM_START] = value,
             INTERRUPT_ENABLE_REG => {
@@ -242,6 +255,9 @@ impl Memory {
                 set_u16(&mut self.wram, index - WRAM_ECHO_START, value);
             }
             OAM_START...OAM_END => {
+                if value != 0 {
+                    println!("OAM {:#06x} set to {:#06x}", index, value);
+                }
                 set_u16(&mut self.oam, index - OAM_START, value);
             }
             HRAM_START...HRAM_END => {

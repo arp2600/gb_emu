@@ -36,6 +36,10 @@ impl<'a> DrawData<'a> {
             TILE_DATA_1
         }
     }
+
+    pub fn are_sprites_enabled(&self) -> bool {
+        self.lcdc.get_bit(1)
+    }
 }
 
 pub struct LCDRegisters<'a> {
@@ -97,7 +101,12 @@ impl<'a> LCDRegisters<'a> {
     create_getter!(get_bgp, bgp, IoRegs::BGP);
 
     create_getter!(get_stat, stat, IoRegs::STAT);
-    create_setter!(set_stat, stat, IoRegs::STAT);
+    // create_setter!(set_stat, stat, IoRegs::STAT);
+    pub fn set_stat(&mut self, value: u8) {
+        self.stat = Some(value);
+        self.memory.set_stat(value);
+    }
+
 
     pub fn check_enabled(&mut self) -> bool {
         self.get_lcdc().get_bit(7)
