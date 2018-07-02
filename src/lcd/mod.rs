@@ -129,10 +129,15 @@ fn draw_sprites(regs: &DrawData, line: &mut[u8; 160]) {
 
     for i in 0..40 {
         let oam_index = SPRITE_ATTRIBUTE_TABLE + i * 4;
-        let y = regs.memory.get_u8(oam_index);
-        let x = regs.memory.get_u8(oam_index + 1);
-        if y != 0 || x != 0 {
-            println!("i {} {}", x, y);
+        let y = regs.memory.get_u8(oam_index).wrapping_sub(8);
+        let x = regs.memory.get_u8(oam_index + 1).wrapping_sub(8);
+        if y >= regs.ly && y < (regs.ly + 8) {
+            for i in 0..8 {
+                let offset  = usize::from(x + i);
+                if offset < line.len() {
+                    line[offset] = 0;
+                }
+            }
         }
     }
 }

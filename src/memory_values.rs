@@ -43,6 +43,7 @@ pub const SPRITE_ATTRIBUTE_TABLE: u16 = 0xfe00;
 
 pub const JOYP: usize = 0xff00;
 pub const STAT: usize = 0xff41;
+pub const DMA: usize = 0xff46;
 
 #[derive(Copy, Clone)]
 pub enum IoRegs {
@@ -63,7 +64,7 @@ pub enum IoRegs {
     BGP = 0xff47,
     // OBP0 = 0xff48,
     // OBP1 = 0xff49,
-    // DMA = 0xff46,
+    DMA = 0xff46,
     // HDMA1 = 0xff51,
     // HDMA2 = 0xff52,
     // HDMA3 = 0xff53,

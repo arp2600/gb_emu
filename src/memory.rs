@@ -124,9 +124,18 @@ impl Memory {
         self.boot_rom_enabled
     }
 
+    fn dma_transfer(&mut self, source: u8) {
+        let start_address = source as u16 * 0x100;
+        for i in 0..OAM_SIZE {
+            let v = self.get_u8(start_address + i as u16);
+            self.set_u8((OAM_START + i) as u16, v);
+        }
+    }
+
     fn set_io_indexed(&mut self, index: usize, value: u8) {
         match index {
             JOYP => self.joypad.set_u8(value),
+            DMA => self.dma_transfer(value),
             0xff01 => self.serial_data.push(value),
             0xff50 => self.boot_rom_enabled = false,
             _ => (),
@@ -177,9 +186,6 @@ impl Memory {
                 self.wram[index - WRAM_ECHO_START] = value;
             }
             OAM_START...OAM_END => {
-                if value != 0 {
-                    println!("OAM {:#06x} set to {:#04x}", index, value);
-                }
                 self.oam[index - OAM_START] = value;
             }
             IO_START...IO_END => self.set_io_indexed(index, value),
