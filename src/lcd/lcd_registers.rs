@@ -49,19 +49,19 @@ impl<'a> LCDRegisters<'a> {
         }
     }
 
-    create_getter!(get_lcdc, lcdc, IoRegs::LCDC);
+    create_getter!(get_lcdc, lcdc, io_regs::LCDC);
 
-    create_getter!(get_ly, ly, IoRegs::LY);
-    create_setter!(set_ly, ly, IoRegs::LY);
+    create_getter!(get_ly, ly, io_regs::LY);
+    create_setter!(set_ly, ly, io_regs::LY);
 
-    create_getter!(get_lyc, lyc, IoRegs::LYC);
+    create_getter!(get_lyc, lyc, io_regs::LYC);
 
-    create_getter!(get_scy, scy, IoRegs::SCY);
+    create_getter!(get_scy, scy, io_regs::SCY);
 
-    create_getter!(get_bgp, bgp, IoRegs::BGP);
+    create_getter!(get_bgp, bgp, io_regs::BGP);
 
-    create_getter!(get_stat, stat, IoRegs::STAT);
-    create_setter!(set_stat, stat, IoRegs::STAT);
+    create_getter!(get_stat, stat, io_regs::STAT);
+    create_setter!(set_stat, stat, io_regs::STAT);
 
     pub fn check_enabled(&mut self) -> bool {
         self.get_lcdc().get_bit(7)
@@ -84,8 +84,8 @@ impl<'a> LCDRegisters<'a> {
     }
 
     pub fn set_interrupt_bit(&mut self) {
-        let if_reg = self.memory.get_io(IoRegs::IF).set_bit(0);
-        self.memory.set_io(IoRegs::IF, if_reg);
+        let if_reg = self.memory.get_io(io_regs::IF).set_bit(0);
+        self.memory.set_io(io_regs::IF, if_reg);
     }
 
     pub fn set_lcd_mode(&mut self, mode: u8) {
