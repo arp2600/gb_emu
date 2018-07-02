@@ -1,6 +1,6 @@
 use super::bit_ops::BitGetSet;
 use super::memory::Memory;
-use super::memory_values::IoRegs;
+use super::memory_values::io_regs;
 use super::registers::Registers;
 
 pub const CLOCK_SPEED: u64 = 4_194_304;
@@ -27,12 +27,12 @@ impl Interrupt {
     }
 
     fn reset_flag(&self, memory: &mut Memory) {
-        let flag = memory.get_io(IoRegs::IF);
+        let flag = memory.get_io(io_regs::IF);
         let new_flag = match self {
             Interrupt::VBlank => flag.reset_bit(0),
             Interrupt::Timer => flag.reset_bit(2),
         };
-        memory.set_io(IoRegs::IF, new_flag);
+        memory.set_io(io_regs::IF, new_flag);
     }
 }
 
@@ -56,8 +56,8 @@ impl Cpu {
     }
 
     pub fn check_interrupts(&mut self, memory: &mut Memory) {
-        let interrupt_request = memory.get_io(IoRegs::IF);
-        let interrupt_enable = memory.get_io(IoRegs::IE);
+        let interrupt_request = memory.get_io(io_regs::IF);
+        let interrupt_enable = memory.get_io(io_regs::IE);
         let interrupts = interrupt_request & interrupt_enable;
         if interrupts.get_bit(0) {
             self.try_interrupt(Interrupt::VBlank, memory);
@@ -669,8 +669,8 @@ impl Cpu {
             self.halt_state = HaltState::Mode1;
             self.registers.pc += 1;
         } else {
-            let ie_flag = memory.get_io(IoRegs::IE);
-            let if_flag = memory.get_io(IoRegs::IF);
+            let ie_flag = memory.get_io(io_regs::IE);
+            let if_flag = memory.get_io(io_regs::IF);
             if (ie_flag & if_flag).trailing_zeros() >= 5 {
                 self.halt_state = HaltState::Mode2;
                 self.registers.pc += 1;

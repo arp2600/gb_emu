@@ -109,7 +109,7 @@ impl Memory {
     }
 
     pub fn set_stat(&mut self, value: u8) {
-        self.io[STAT - IO_START] = value;
+        self.io[io_regs::STAT - IO_START] = value;
     }
 
     pub fn get_joypad(&mut self) -> &mut JoyPad {
@@ -134,14 +134,14 @@ impl Memory {
 
     fn set_io_indexed(&mut self, index: usize, value: u8) {
         match index {
-            JOYP => self.joypad.set_u8(value),
-            DMA => self.dma_transfer(value),
+            io_regs::JOYP => self.joypad.set_u8(value),
+            io_regs::DMA => self.dma_transfer(value),
             0xff01 => self.serial_data.push(value),
             0xff50 => self.boot_rom_enabled = false,
             _ => (),
         }
 
-        if index == STAT {
+        if index == io_regs::STAT {
             self.io[index - IO_START] = value & 0b0111_1000;
         } else {
             self.io[index - IO_START] = value;
@@ -151,25 +151,25 @@ impl Memory {
     fn get_io_indexed(&self, index: usize) -> u8 {
         let value = self.io[index - IO_START];
         match index {
-            JOYP => self.joypad.get_u8(),
+            io_regs::JOYP => self.joypad.get_u8(),
             _ => value,
         }
     }
 
-    pub fn get_io(&self, reg: IoRegs) -> u8 {
+    pub fn get_io(&self, reg: usize) -> u8 {
         match reg {
             // IoRegs is not in normal io range
             // so is not accessible in get_io_indexed
-            IoRegs::IE => self.interrupt_enable_register,
+            io_regs::IE => self.interrupt_enable_register,
             _ => self.get_io_indexed(reg as usize),
         }
     }
 
-    pub fn set_io(&mut self, reg: IoRegs, value: u8) {
+    pub fn set_io(&mut self, reg: usize, value: u8) {
         match reg {
             // IoRegs is not in normal io range
             // so is not accessible in set_io_indexed
-            IoRegs::IE => self.interrupt_enable_register = value,
+            io_regs::IE => self.interrupt_enable_register = value,
             _ => self.set_io_indexed(reg as usize, value),
         }
     }

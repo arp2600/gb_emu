@@ -41,30 +41,25 @@ pub const TILE_DATA_2: u16 = 0x8000;
 pub const SPRITE_PATTERN_TABLE: u16 = 0x8000;
 pub const SPRITE_ATTRIBUTE_TABLE: u16 = 0xfe00;
 
-pub const JOYP: usize = 0xff00;
-pub const STAT: usize = 0xff41;
-pub const DMA: usize = 0xff46;
-
-#[derive(Copy, Clone)]
-pub enum IoRegs {
-    // JOYP = 0xff00,
-    TIMA = 0xff05,
-    TMA = 0xff06,
-    TAC = 0xff07,
-    IF = 0xff0f,
-    IE = 0xffff,
-    LCDC = 0xff40,
-    STAT = 0xff41,
-    SCY = 0xff42,
+pub mod io_regs {
+    pub const JOYP: usize = 0xff00;
+    pub const TIMA: usize = 0xff05;
+    pub const TMA: usize = 0xff06;
+    pub const TAC: usize = 0xff07;
+    pub const IF: usize = 0xff0f;
+    pub const IE: usize = 0xffff;
+    pub const LCDC: usize = 0xff40;
+    pub const STAT: usize = 0xff41;
+    pub const SCY: usize = 0xff42;
     // SCX = 0xff43,
-    LY = 0xff44,
-    LYC = 0xff45,
+    pub const LY: usize = 0xff44;
+    pub const LYC: usize = 0xff45;
     // WY = 0xff4a,
     // WX = 0xff4b,
-    BGP = 0xff47,
+    pub const DMA: usize = 0xff46;
+    pub const BGP: usize = 0xff47;
     // OBP0 = 0xff48,
     // OBP1 = 0xff49,
-    DMA = 0xff46,
     // HDMA1 = 0xff51,
     // HDMA2 = 0xff52,
     // HDMA3 = 0xff53,
