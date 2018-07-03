@@ -1,16 +1,19 @@
 pub mod io_regs;
 pub mod locations;
 pub mod joypad;
+mod video_memory;
+mod sizes;
 use bit_ops::BitGetSet;
 use cartridge::Cartridge;
 use self::locations::*;
+use self::video_memory::VideoMemory;
 pub use self::joypad::JoyPad;
 
 pub struct Memory {
     boot_rom: Vec<u8>,
     boot_rom_enabled: bool,
     cartridge: Cartridge,
-    vram: [u8; VRAM_SIZE],
+    vram: VideoMemory,
     wram: [u8; WRAM_SIZE],
     oam: [u8; OAM_SIZE],
     io: [u8; IO_SIZE],
@@ -27,7 +30,7 @@ impl Memory {
             boot_rom_enabled: true,
             cartridge,
             hram: [0; HRAM_SIZE],
-            vram: [0; VRAM_SIZE],
+            vram: VideoMemory::new(),
             wram: [0; WRAM_SIZE],
             oam: [0; OAM_SIZE],
             io: [0; IO_SIZE],
@@ -108,7 +111,7 @@ impl Memory {
         match index {
             ROM_0_START...ROM_0_END => (),
             ROM_N_START...ROM_N_END => (),
-            VRAM_START...VRAM_END => self.vram[index - VRAM_START] = value,
+            VRAM_START...VRAM_END => self.vram[index] = value,
             EXRAM_START...EXRAM_END => unimplemented!(),
             WRAM_START...WRAM_END => self.wram[index - WRAM_START] = value,
             WRAM_ECHO_START...WRAM_ECHO_END => {
@@ -139,7 +142,7 @@ impl Memory {
             x if self.is_valid_boot_rom_index(x) => self.boot_rom[x],
             ROM_0_START...ROM_0_END => self.cartridge.get_u8(index),
             ROM_N_START...ROM_N_END => self.cartridge.get_u8(index),
-            VRAM_START...VRAM_END => self.vram[index - VRAM_START],
+            VRAM_START...VRAM_END => self.vram[index],
             EXRAM_START...EXRAM_END => unimplemented!(),
             WRAM_START...WRAM_END => self.wram[index - WRAM_START],
             WRAM_ECHO_START...WRAM_ECHO_END => self.wram[index - WRAM_ECHO_START],
@@ -160,7 +163,7 @@ impl Memory {
             x if self.is_valid_boot_rom_index(x) => get_u16(&self.boot_rom, index),
             ROM_0_START...ROM_0_END => self.cartridge.get_u16(index),
             ROM_N_START...ROM_N_END => self.cartridge.get_u16(index),
-            VRAM_START...VRAM_END => get_u16(&self.vram, index - VRAM_START),
+            VRAM_START...VRAM_END => self.vram.get_u16(index),
             EXRAM_START...EXRAM_END => unimplemented!(),
             WRAM_START...WRAM_END => get_u16(&self.wram, index - WRAM_START),
             WRAM_ECHO_START...WRAM_ECHO_END => get_u16(&self.wram, index - WRAM_ECHO_START),
@@ -180,7 +183,7 @@ impl Memory {
             ROM_0_START...ROM_0_END => bad_write_panic(index),
             ROM_N_START...ROM_N_END => bad_write_panic(index),
             VRAM_START...VRAM_END => {
-                set_u16(&mut self.vram, index - VRAM_START, value);
+                self.vram.set_u16(index, value);
             }
             EXRAM_START...EXRAM_END => unimplemented!(),
             WRAM_START...WRAM_END => {

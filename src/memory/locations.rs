@@ -8,7 +8,6 @@ pub const ROM_N_END: usize = 0x7fff;
 
 pub const VRAM_START: usize = 0x8000;
 pub const VRAM_END: usize = 0x9fff;
-pub const VRAM_SIZE: usize = 8 * KILOBYTE;
 
 pub const EXRAM_START: usize = 0xa000;
 pub const EXRAM_END: usize = 0xbfff;
