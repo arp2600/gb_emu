@@ -7,6 +7,8 @@ pub struct DrawData<'a> {
     pub bgp: u8,
     pub scy: u8,
     lcdc: u8,
+    obp0: u8,
+    obp1: u8,
     pub memory: &'a Memory,
 }
 
@@ -16,9 +18,11 @@ impl<'a> DrawData<'a> {
         let bgp = regs.get_bgp();
         let scy = regs.get_scy();
         let lcdc = regs.get_lcdc();
+        let obp0 = regs.memory.get_u8(io_regs::OBP0 as u16);
+        let obp1 = regs.memory.get_u8(io_regs::OBP1 as u16);
         let memory = &regs.memory;
 
-        DrawData { ly, bgp, scy, lcdc, memory }
+        DrawData { ly, bgp, scy, lcdc, obp0, obp1, memory }
     }
 
     pub fn get_bg_tilemap_display_select(&self) -> u16 {
@@ -39,6 +43,14 @@ impl<'a> DrawData<'a> {
 
     pub fn are_sprites_enabled(&self) -> bool {
         self.lcdc.get_bit(1)
+    }
+
+    pub fn get_obp(&self, num: u8) -> u8 {
+        if num == 1 {
+            self.obp1
+        } else {
+            self.obp0
+        }
     }
 }
 

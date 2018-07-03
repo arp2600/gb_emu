@@ -6,6 +6,7 @@ use self::mode_updater::ModeUpdater;
 use self::pixel_iterator::PixelIterator;
 use memory::Memory;
 use memory_values::*;
+use super::bit_ops::BitGetSet;
 
 pub struct LCD {
     update_time: u64,
@@ -129,19 +130,32 @@ fn draw_sprites(regs: &DrawData, line: &mut[u8; 160]) {
 
     for i in 0..40 {
         let oam_index = SPRITE_ATTRIBUTE_TABLE + i * 4;
-        let y = regs.memory.get_u8(oam_index).wrapping_sub(8);
+        let y = regs.memory.get_u8(oam_index).wrapping_sub(9);
         let x = regs.memory.get_u8(oam_index + 1).wrapping_sub(8);
         if y >= regs.ly && y < (regs.ly + 8) {
             let tile_num = regs.memory.get_u8(oam_index + 2) as u16;
+            let attributes = regs.memory.get_u8(oam_index + 3);
+            let y_flip = attributes.get_bit(6);
+            let palette = attributes.get_bit(4) as u8;
+            let obp = create_bgp_data(regs.get_obp(palette));
             let tile_address = SPRITE_PATTERN_TABLE + tile_num * 16;
-            let tile_y_index = u16::from(y - regs.ly);
+            let tile_y_index = {
+                let y = u16::from(y - regs.ly);
+                if y_flip {
+                    y
+                } else {
+                    7 - y
+                }
+            };
             let line_address = tile_address + tile_y_index * 2;
 
             let pixels = regs.memory.get_u16(line_address);
             for (i, pixel) in PixelIterator::new(pixels).enumerate() {
                 let index = usize::from(x) + i;
                 if index < line.len() {
-                    line[index] = pixel;
+                    if pixel > 0 {
+                        line[index] = obp[pixel as usize];
+                    }
                 }
             }
         }

@@ -58,8 +58,8 @@ pub mod io_regs {
     // WX = 0xff4b,
     pub const DMA: usize = 0xff46;
     pub const BGP: usize = 0xff47;
-    // OBP0 = 0xff48,
-    // OBP1 = 0xff49,
+    pub const OBP0: usize = 0xff48;
+    pub const OBP1: usize = 0xff49;
     // HDMA1 = 0xff51,
     // HDMA2 = 0xff52,
     // HDMA3 = 0xff53,
