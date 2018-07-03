@@ -64,45 +64,48 @@ impl Memory {
         }
     }
 
-    fn set_io_indexed(&mut self, index: usize, value: u8) {
+    pub fn get_io(&self, index: usize) -> u8 {
+        match index {
+            io_regs::IE => self.interrupt_enable_register,
+            io_regs::JOYP => self.joypad.get_u8(),
+            io_regs::LCDC => self.vram.regs.lcdc,
+            io_regs::LY => self.vram.regs.ly,
+            io_regs::LYC => self.vram.regs.lyc,
+            io_regs::STAT => self.vram.regs.stat,
+            io_regs::SCY => self.vram.regs.scy,
+            io_regs::BGP => self.vram.regs.bgp,
+            io_regs::OBP0 => self.vram.regs.obp0,
+            io_regs::OBP1 => self.vram.regs.obp1,
+            _ => {
+                eprintln!("warning: reading from placeholder io {:#06x}", index);
+                self.io[index - IO_START]
+            }
+        }
+    }
+
+    pub fn set_io(&mut self, index: usize, value: u8) {
         match index {
             io_regs::JOYP => self.joypad.set_u8(value),
             io_regs::DMA => self.dma_transfer(value),
-            0xff01 => self.serial_data.push(value),
-            0xff50 => self.boot_rom_enabled = false,
-            _ => (),
-        }
-
-        if index == io_regs::STAT {
-            self.io[index - IO_START] = value & 0b0111_1000;
-        } else {
-            self.io[index - IO_START] = value;
-        }
-    }
-
-    fn get_io_indexed(&self, index: usize) -> u8 {
-        let value = self.io[index - IO_START];
-        match index {
-            io_regs::JOYP => self.joypad.get_u8(),
-            _ => value,
-        }
-    }
-
-    pub fn get_io(&self, reg: usize) -> u8 {
-        match reg {
-            // IoRegs is not in normal io range
-            // so is not accessible in get_io_indexed
-            io_regs::IE => self.interrupt_enable_register,
-            _ => self.get_io_indexed(reg as usize),
-        }
-    }
-
-    pub fn set_io(&mut self, reg: usize, value: u8) {
-        match reg {
-            // IoRegs is not in normal io range
-            // so is not accessible in set_io_indexed
             io_regs::IE => self.interrupt_enable_register = value,
-            _ => self.set_io_indexed(reg as usize, value),
+            io_regs::SB => self.serial_data.push(value),
+            io_regs::BOOT_ROM_DISABLE => self.boot_rom_enabled = false,
+            io_regs::STAT => {
+                let stat = self.vram.regs.stat;
+                let new_stat = (stat & 0b0111) | (value & 0b0111_1000);
+                self.vram.regs.stat = new_stat;
+            }
+            io_regs::LCDC => self.vram.regs.lcdc = value,
+            io_regs::LY => self.vram.regs.ly = value,
+            io_regs::LYC => self.vram.regs.lyc = value,
+            io_regs::SCY => self.vram.regs.scy = value,
+            io_regs::BGP => self.vram.regs.bgp = value,
+            io_regs::OBP0 => self.vram.regs.obp0 = value,
+            io_regs::OBP1 => self.vram.regs.obp1 = value,
+            _ => {
+                eprintln!("warning: writing to placeholder io {:#06x}", index);
+                self.io[index - IO_START] = value;
+            }
         }
     }
 
@@ -120,7 +123,7 @@ impl Memory {
             OAM_START...OAM_END => {
                 self.oam[index - OAM_START] = value;
             }
-            IO_START...IO_END => self.set_io_indexed(index, value),
+            IO_START...IO_END => self.set_io(index, value),
             HRAM_START...HRAM_END => self.hram[index - HRAM_START] = value,
             INTERRUPT_ENABLE_REG => {
                 self.interrupt_enable_register = value;
@@ -147,7 +150,7 @@ impl Memory {
             WRAM_START...WRAM_END => self.wram[index - WRAM_START],
             WRAM_ECHO_START...WRAM_ECHO_END => self.wram[index - WRAM_ECHO_START],
             OAM_START...OAM_END => self.oam[index - OAM_START],
-            IO_START...IO_END => self.get_io_indexed(index),
+            IO_START...IO_END => self.get_io(index),
             HRAM_START...HRAM_END => self.hram[index - HRAM_START],
             INTERRUPT_ENABLE_REG => self.interrupt_enable_register,
             x => {

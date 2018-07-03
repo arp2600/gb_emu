@@ -193,7 +193,7 @@ mod tests {
             let frame_time = cycles % (456 * 154);
             let test_ly = (frame_time / 456) as u8;
 
-            lcd.tick(&mut memory, cycles, |_, _| {});
+            lcd.tick(memory.get_video_memory(), cycles, |_, _| {});
             let lcd_ly = memory.get_io(io_regs::LY);
 
             assert_eq!(
@@ -239,7 +239,7 @@ mod tests {
             let cycles = line * 456 + base_cycles;
             // Mode 0 for first 4 cycles
             for c in cycles..(cycles + 4) {
-                lcd.tick(memory, c, |_, _| {});
+                lcd.tick(memory.get_video_memory(), c, |_, _| {});
                 let stat = memory.get_io(io_regs::STAT);
                 let ly = memory.get_io(io_regs::LY);
                 assert_eq!(stat & 0b11, 0);
@@ -247,7 +247,7 @@ mod tests {
             }
             // Test line 0 timings
             for c in (cycles + 4)..(cycles + 84) {
-                lcd.tick(memory, c, |_, _| {});
+                lcd.tick(memory.get_video_memory(), c, |_, _| {});
                 let stat = memory.get_io(io_regs::STAT);
                 let ly = memory.get_io(io_regs::LY);
                 assert_eq!(stat & 0b11, 2);
@@ -255,7 +255,7 @@ mod tests {
             }
             {
                 // Mode 3 for indefinate time starting at 84
-                lcd.tick(memory, cycles + 84, |_, _| {});
+                lcd.tick(memory.get_video_memory(), cycles + 84, |_, _| {});
                 let stat = memory.get_io(io_regs::STAT);
                 let ly = memory.get_io(io_regs::LY);
                 assert_eq!(stat & 0b11, 3);
@@ -263,7 +263,7 @@ mod tests {
             }
             // By 448, mode should be 0, and should remain till end of scanline
             for c in (cycles + 448)..(cycles + 456) {
-                lcd.tick(memory, c, |_, _| {});
+                lcd.tick(memory.get_video_memory(), c, |_, _| {});
                 let stat = memory.get_io(io_regs::STAT);
                 let ly = memory.get_io(io_regs::LY);
                 assert_eq!(stat & 0b11, 0);
@@ -276,7 +276,7 @@ mod tests {
             let cycles = line * 456 + base_cycles;
             // Mode 0 for first 4 cycles
             for c in cycles..(cycles + 4) {
-                lcd.tick(memory, c, |_, _| {});
+                lcd.tick(memory.get_video_memory(), c, |_, _| {});
                 let stat = memory.get_io(io_regs::STAT);
                 let ly = memory.get_io(io_regs::LY);
                 assert_eq!(stat & 0b11, 0);
@@ -284,7 +284,7 @@ mod tests {
             }
             // Mode 1 for remaining cycles
             for c in (cycles + 4)..(cycles + 456) {
-                lcd.tick(memory, c, |_, _| {});
+                lcd.tick(memory.get_video_memory(), c, |_, _| {});
                 let stat = memory.get_io(io_regs::STAT);
                 let ly = memory.get_io(io_regs::LY);
                 assert_eq!(stat & 0b11, 1);
@@ -296,7 +296,7 @@ mod tests {
             let cycles = line * 456 + base_cycles;
             // Mode 1 for all cycles
             for c in cycles..(cycles + 456) {
-                lcd.tick(memory, c, |_, _| {});
+                lcd.tick(memory.get_video_memory(), c, |_, _| {});
                 let stat = memory.get_io(io_regs::STAT);
                 let ly = memory.get_io(io_regs::LY);
                 assert_eq!(stat & 0b11, 1);
