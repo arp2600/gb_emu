@@ -13,6 +13,7 @@ pub struct VideoRegisters {
     pub bgp: u8,
     pub obp0: u8,
     pub obp1: u8,
+    pub vblank_interrupt_enabled: bool,
 }
 
 pub struct VideoMemory {
@@ -63,12 +64,6 @@ impl VideoMemory {
 
     pub fn check_enabled(&mut self) -> bool {
         self.regs.lcdc.get_bit(7)
-    }
-
-    pub fn set_interrupt_bit(&mut self) {
-        unimplemented!();
-        // let if_reg = self.memory.get_io(io_regs::IF).set_bit(0);
-        // self.memory.set_io(io_regs::IF, if_reg);
     }
 
     pub fn set_lcd_mode(&mut self, mode: u8) {

@@ -59,7 +59,7 @@ impl LCD {
 
             if self.next_ly == 144 {
                 self.frame += 1;
-                vram.set_interrupt_bit();
+                vram.regs.vblank_interrupt_enabled = true;
             }
 
             let lyc = vram.regs.lyc;

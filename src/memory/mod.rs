@@ -21,6 +21,7 @@ pub struct Memory {
     interrupt_enable_register: u8,
     serial_data: Vec<u8>,
     joypad: JoyPad,
+    interrupt_flag: u8,
 }
 
 impl Memory {
@@ -37,6 +38,7 @@ impl Memory {
             interrupt_enable_register: 0,
             serial_data: Vec::new(),
             joypad: JoyPad::new(),
+            interrupt_flag: 0,
         }
     }
 
@@ -76,6 +78,13 @@ impl Memory {
             io_regs::BGP => self.vram.regs.bgp,
             io_regs::OBP0 => self.vram.regs.obp0,
             io_regs::OBP1 => self.vram.regs.obp1,
+            io_regs::IF => {
+                let mut x = self.interrupt_flag;
+                if self.vram.regs.vblank_interrupt_enabled {
+                    x = x.set_bit(0);
+                }
+                x
+            }
             _ => {
                 eprintln!("warning: reading from placeholder io {:#06x}", index);
                 self.io[index - IO_START]
@@ -102,6 +111,10 @@ impl Memory {
             io_regs::BGP => self.vram.regs.bgp = value,
             io_regs::OBP0 => self.vram.regs.obp0 = value,
             io_regs::OBP1 => self.vram.regs.obp1 = value,
+            io_regs::IF => {
+                self.interrupt_flag = value & 0b1111_1110;
+                self.vram.regs.vblank_interrupt_enabled = (value & 1) != 0;
+            }
             _ => {
                 eprintln!("warning: writing to placeholder io {:#06x}", index);
                 self.io[index - IO_START] = value;
