@@ -40,6 +40,10 @@ impl Memory {
         }
     }
 
+    pub fn get_video_memory(&mut self) -> &mut VideoMemory {
+        &mut self.vram
+    }
+
     pub fn set_stat(&mut self, value: u8) {
         self.io[io_regs::STAT - IO_START] = value;
     }
