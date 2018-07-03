@@ -84,7 +84,7 @@ impl Memory {
                 x
             }
             _ => {
-                eprintln!("warning: reading from placeholder io {:#06x}", index);
+                // eprintln!("warning: reading from placeholder io {:#06x}", index);
                 self.io[index - IO_START]
             }
         }
@@ -114,7 +114,7 @@ impl Memory {
                 self.vram.regs.vblank_interrupt_enabled = (value & 1) != 0;
             }
             _ => {
-                eprintln!("warning: writing to placeholder io {:#06x}", index);
+                // eprintln!("warning: writing to placeholder io {:#06x}", index);
                 self.io[index - IO_START] = value;
             }
         }
