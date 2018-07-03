@@ -4,8 +4,7 @@ mod pixel_iterator;
 use self::lcd_registers::{LCDRegisters, DrawData};
 use self::mode_updater::ModeUpdater;
 use self::pixel_iterator::PixelIterator;
-use memory::Memory;
-use memory_values::*;
+use memory::{Memory, locations};
 use super::bit_ops::BitGetSet;
 
 pub struct LCD {
@@ -129,7 +128,7 @@ fn draw_sprites(regs: &DrawData, line: &mut[u8; 160]) {
     }
 
     for i in 0..40 {
-        let oam_index = SPRITE_ATTRIBUTE_TABLE + i * 4;
+        let oam_index = locations::SPRITE_ATTRIBUTE_TABLE + i * 4;
         let y = regs.memory.get_u8(oam_index).wrapping_sub(9);
         let x = regs.memory.get_u8(oam_index + 1).wrapping_sub(8);
         if y >= regs.ly && y < (regs.ly + 8) {
@@ -138,7 +137,7 @@ fn draw_sprites(regs: &DrawData, line: &mut[u8; 160]) {
             let y_flip = attributes.get_bit(6);
             let palette = attributes.get_bit(4) as u8;
             let obp = create_bgp_data(regs.get_obp(palette));
-            let tile_address = SPRITE_PATTERN_TABLE + tile_num * 16;
+            let tile_address = locations::SPRITE_PATTERN_TABLE + tile_num * 16;
             let tile_y_index = {
                 let y = u16::from(y - regs.ly);
                 if y_flip {
@@ -179,8 +178,7 @@ where
 mod tests {
     use cartridge::Cartridge;
     use lcd::LCD;
-    use memory::Memory;
-    use memory_values::io_regs;
+    use memory::{Memory, io_regs};
 
     // Check lcd against old algorithm for calculating ly register
     #[test]

@@ -1,6 +1,5 @@
 use bit_ops::BitGetSet;
-use memory::Memory;
-use memory_values::*;
+use memory::{Memory, io_regs, locations};
 
 pub struct DrawData<'a> {
     pub ly: u8,
@@ -27,17 +26,17 @@ impl<'a> DrawData<'a> {
 
     pub fn get_bg_tilemap_display_select(&self) -> u16 {
         if self.lcdc.get_bit(3) {
-            TILE_MAP_2
+            locations::TILE_MAP_2
         } else {
-            TILE_MAP_1
+            locations::TILE_MAP_1
         }
     }
 
     pub fn get_tile_data_select(&self) -> u16 {
         if self.lcdc.get_bit(4) {
-            TILE_DATA_2
+            locations::TILE_DATA_2
         } else {
-            TILE_DATA_1
+            locations::TILE_DATA_1
         }
     }
 

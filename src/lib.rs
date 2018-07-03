@@ -3,7 +3,6 @@ mod cartridge;
 mod cpu;
 mod lcd;
 mod memory;
-mod memory_values;
 mod opcode_table;
 mod registers;
 mod timer;

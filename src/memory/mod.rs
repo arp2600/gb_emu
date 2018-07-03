@@ -1,6 +1,8 @@
-use super::bit_ops::BitGetSet;
+pub mod io_regs;
+pub mod locations;
+use bit_ops::BitGetSet;
 use cartridge::Cartridge;
-use memory_values::*;
+use self::locations::*;
 
 pub struct JoyPad {
     buttons: u8,
