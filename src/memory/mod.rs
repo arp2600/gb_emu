@@ -15,7 +15,6 @@ pub struct Memory {
     cartridge: Cartridge,
     vram: VideoMemory,
     wram: [u8; WRAM_SIZE],
-    oam: [u8; OAM_SIZE],
     io: [u8; IO_SIZE],
     hram: [u8; HRAM_SIZE],
     interrupt_enable_register: u8,
@@ -33,7 +32,6 @@ impl Memory {
             hram: [0; HRAM_SIZE],
             vram: VideoMemory::new(),
             wram: [0; WRAM_SIZE],
-            oam: [0; OAM_SIZE],
             io: [0; IO_SIZE],
             interrupt_enable_register: 0,
             serial_data: Vec::new(),
@@ -134,7 +132,7 @@ impl Memory {
                 self.wram[index - WRAM_ECHO_START] = value;
             }
             OAM_START...OAM_END => {
-                self.oam[index - OAM_START] = value;
+                self.vram[index] = value;
             }
             IO_START...IO_END => self.set_io(index, value),
             HRAM_START...HRAM_END => self.hram[index - HRAM_START] = value,
@@ -162,7 +160,7 @@ impl Memory {
             EXRAM_START...EXRAM_END => unimplemented!(),
             WRAM_START...WRAM_END => self.wram[index - WRAM_START],
             WRAM_ECHO_START...WRAM_ECHO_END => self.wram[index - WRAM_ECHO_START],
-            OAM_START...OAM_END => self.oam[index - OAM_START],
+            OAM_START...OAM_END => self.vram[index],
             IO_START...IO_END => self.get_io(index),
             HRAM_START...HRAM_END => self.hram[index - HRAM_START],
             INTERRUPT_ENABLE_REG => self.interrupt_enable_register,
@@ -183,7 +181,7 @@ impl Memory {
             EXRAM_START...EXRAM_END => unimplemented!(),
             WRAM_START...WRAM_END => get_u16(&self.wram, index - WRAM_START),
             WRAM_ECHO_START...WRAM_ECHO_END => get_u16(&self.wram, index - WRAM_ECHO_START),
-            OAM_START...OAM_END => get_u16(&self.oam, index - OAM_START),
+            OAM_START...OAM_END => self.vram.get_u16(index),
             HRAM_START...HRAM_END => get_u16(&self.hram, index - HRAM_START),
             INTERRUPT_ENABLE_REG => unimplemented!(),
             x => {
@@ -212,7 +210,7 @@ impl Memory {
                 if value != 0 {
                     println!("OAM {:#06x} set to {:#06x}", index, value);
                 }
-                set_u16(&mut self.oam, index - OAM_START, value);
+                self.vram.set_u16(index, value);
             }
             HRAM_START...HRAM_END => {
                 set_u16(&mut self.hram, index - HRAM_START, value);

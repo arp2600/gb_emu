@@ -18,20 +18,39 @@ pub struct VideoRegisters {
 
 pub struct VideoMemory {
     vram: [u8; sizes::VRAM],
+    oam: [u8; sizes::OAM],
     pub regs: VideoRegisters,
 }
 
 impl VideoMemory {
     pub(super) fn new() -> VideoMemory {
-        VideoMemory { vram: [0; sizes::VRAM], regs: Default::default() }
+        let vram = [0; sizes::VRAM];
+        let oam = [0; sizes::OAM];
+        VideoMemory { vram, oam, regs: Default::default() }
     }
 
     pub fn get_u16(&self, index: usize) -> u16 {
-        get_u16(&self.vram, index - locations::VRAM_START)
+        match index {
+            locations::VRAM_START...locations::VRAM_END => {
+                get_u16(&self.vram, index - locations::VRAM_START)
+            }
+            locations::OAM_START...locations::OAM_END => {
+                get_u16(&self.oam, index - locations::OAM_START)
+            }
+            _ => panic!("Invalid index for VideoMemory"),
+        }
     }
 
     pub(super) fn set_u16(&mut self, index: usize, value: u16) {
-        set_u16(&mut self.vram, index - locations::VRAM_START, value);
+        match index {
+            locations::VRAM_START...locations::VRAM_END => {
+                set_u16(&mut self.vram, index - locations::VRAM_START, value);
+            }
+            locations::OAM_START...locations::OAM_END => {
+                set_u16(&mut self.oam, index - locations::OAM_START, value);
+            }
+            _ => panic!("Invalid index for VideoMemory"),
+        }
     }
 
     pub fn get_bg_tilemap_display_select(&self) -> u16 {
@@ -83,12 +102,28 @@ impl Index<usize> for VideoMemory {
     type Output = u8;
 
     fn index(&self, index: usize) -> &u8 {
-        &self.vram[index - locations::VRAM_START]
+        match index {
+            locations::VRAM_START...locations::VRAM_END => {
+                &self.vram[index - locations::VRAM_START]
+            }
+            locations::OAM_START...locations::OAM_END => {
+                &self.oam[index - locations::OAM_START]
+            }
+            _ => panic!("Invalid index for VideoMemory"),
+        }
     }
 }
 
 impl IndexMut<usize> for VideoMemory {
     fn index_mut(&mut self, index: usize) -> &mut u8 {
-        &mut self.vram[index - locations::VRAM_START]
+        match index {
+            locations::VRAM_START...locations::VRAM_END => {
+                &mut self.vram[index - locations::VRAM_START]
+            }
+            locations::OAM_START...locations::OAM_END => {
+                &mut self.oam[index - locations::OAM_START]
+            }
+            _ => panic!("Invalid index for VideoMemory"),
+        }
     }
 }
