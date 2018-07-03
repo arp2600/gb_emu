@@ -132,10 +132,16 @@ fn draw_sprites(regs: &DrawData, line: &mut[u8; 160]) {
         let y = regs.memory.get_u8(oam_index).wrapping_sub(8);
         let x = regs.memory.get_u8(oam_index + 1).wrapping_sub(8);
         if y >= regs.ly && y < (regs.ly + 8) {
-            for i in 0..8 {
-                let offset  = usize::from(x + i);
-                if offset < line.len() {
-                    line[offset] = 0;
+            let tile_num = regs.memory.get_u8(oam_index + 2) as u16;
+            let tile_address = SPRITE_PATTERN_TABLE + tile_num * 16;
+            let tile_y_index = u16::from(y - regs.ly);
+            let line_address = tile_address + tile_y_index * 2;
+
+            let pixels = regs.memory.get_u16(line_address);
+            for (i, pixel) in PixelIterator::new(pixels).enumerate() {
+                let index = usize::from(x) + i;
+                if index < line.len() {
+                    line[index] = pixel;
                 }
             }
         }
