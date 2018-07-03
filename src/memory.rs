@@ -108,6 +108,10 @@ impl Memory {
         }
     }
 
+    pub fn set_stat(&mut self, value: u8) {
+        self.io[io_regs::STAT - IO_START] = value;
+    }
+
     pub fn get_joypad(&mut self) -> &mut JoyPad {
         &mut self.joypad
     }
@@ -120,15 +124,28 @@ impl Memory {
         self.boot_rom_enabled
     }
 
+    fn dma_transfer(&mut self, source: u8) {
+        let start_address = source as u16 * 0x100;
+        for i in 0..OAM_SIZE {
+            let v = self.get_u8(start_address + i as u16);
+            self.set_u8((OAM_START + i) as u16, v);
+        }
+    }
+
     fn set_io_indexed(&mut self, index: usize, value: u8) {
         match index {
             io_regs::JOYP => self.joypad.set_u8(value),
+            io_regs::DMA => self.dma_transfer(value),
             0xff01 => self.serial_data.push(value),
             0xff50 => self.boot_rom_enabled = false,
             _ => (),
         }
 
-        self.io[index - IO_START] = value;
+        if index == io_regs::STAT {
+            self.io[index - IO_START] = value & 0b0111_1000;
+        } else {
+            self.io[index - IO_START] = value;
+        }
     }
 
     fn get_io_indexed(&self, index: usize) -> u8 {
@@ -168,7 +185,9 @@ impl Memory {
             WRAM_ECHO_START...WRAM_ECHO_END => {
                 self.wram[index - WRAM_ECHO_START] = value;
             }
-            OAM_START...OAM_END => self.oam[index - OAM_START] = value,
+            OAM_START...OAM_END => {
+                self.oam[index - OAM_START] = value;
+            }
             IO_START...IO_END => self.set_io_indexed(index, value),
             HRAM_START...HRAM_END => self.hram[index - HRAM_START] = value,
             INTERRUPT_ENABLE_REG => {
@@ -242,6 +261,9 @@ impl Memory {
                 set_u16(&mut self.wram, index - WRAM_ECHO_START, value);
             }
             OAM_START...OAM_END => {
+                if value != 0 {
+                    println!("OAM {:#06x} set to {:#06x}", index, value);
+                }
                 set_u16(&mut self.oam, index - OAM_START, value);
             }
             HRAM_START...HRAM_END => {

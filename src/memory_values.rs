@@ -38,7 +38,8 @@ pub const TILE_MAP_1: u16 = 0x9800;
 pub const TILE_MAP_2: u16 = 0x9c00;
 pub const TILE_DATA_1: u16 = 0x8800;
 pub const TILE_DATA_2: u16 = 0x8000;
-
+pub const SPRITE_PATTERN_TABLE: u16 = 0x8000;
+pub const SPRITE_ATTRIBUTE_TABLE: u16 = 0xfe00;
 
 pub mod io_regs {
     pub const JOYP: usize = 0xff00;
@@ -55,10 +56,10 @@ pub mod io_regs {
     pub const LYC: usize = 0xff45;
     // WY = 0xff4a,
     // WX = 0xff4b,
+    pub const DMA: usize = 0xff46;
     pub const BGP: usize = 0xff47;
-    // OBP0 = 0xff48,
-    // OBP1 = 0xff49,
-    // DMA = 0xff46,
+    pub const OBP0: usize = 0xff48;
+    pub const OBP1: usize = 0xff49;
     // HDMA1 = 0xff51,
     // HDMA2 = 0xff52,
     // HDMA3 = 0xff53,

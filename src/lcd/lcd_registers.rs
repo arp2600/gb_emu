@@ -2,6 +2,58 @@ use bit_ops::BitGetSet;
 use memory::Memory;
 use memory_values::*;
 
+pub struct DrawData<'a> {
+    pub ly: u8,
+    pub bgp: u8,
+    pub scy: u8,
+    lcdc: u8,
+    obp0: u8,
+    obp1: u8,
+    pub memory: &'a Memory,
+}
+
+impl<'a> DrawData<'a> {
+    pub fn new(regs: &'a mut LCDRegisters) -> DrawData<'a> {
+        let ly = regs.get_ly();
+        let bgp = regs.get_bgp();
+        let scy = regs.get_scy();
+        let lcdc = regs.get_lcdc();
+        let obp0 = regs.memory.get_u8(io_regs::OBP0 as u16);
+        let obp1 = regs.memory.get_u8(io_regs::OBP1 as u16);
+        let memory = &regs.memory;
+
+        DrawData { ly, bgp, scy, lcdc, obp0, obp1, memory }
+    }
+
+    pub fn get_bg_tilemap_display_select(&self) -> u16 {
+        if self.lcdc.get_bit(3) {
+            TILE_MAP_2
+        } else {
+            TILE_MAP_1
+        }
+    }
+
+    pub fn get_tile_data_select(&self) -> u16 {
+        if self.lcdc.get_bit(4) {
+            TILE_DATA_2
+        } else {
+            TILE_DATA_1
+        }
+    }
+
+    pub fn are_sprites_enabled(&self) -> bool {
+        self.lcdc.get_bit(1)
+    }
+
+    pub fn get_obp(&self, num: u8) -> u8 {
+        if num == 1 {
+            self.obp1
+        } else {
+            self.obp0
+        }
+    }
+}
+
 pub struct LCDRegisters<'a> {
     pub memory: &'a mut Memory,
     lcdc: Option<u8>,
@@ -61,26 +113,13 @@ impl<'a> LCDRegisters<'a> {
     create_getter!(get_bgp, bgp, io_regs::BGP);
 
     create_getter!(get_stat, stat, io_regs::STAT);
-    create_setter!(set_stat, stat, io_regs::STAT);
+    pub fn set_stat(&mut self, value: u8) {
+        self.stat = Some(value);
+        self.memory.set_stat(value);
+    }
 
     pub fn check_enabled(&mut self) -> bool {
         self.get_lcdc().get_bit(7)
-    }
-
-    pub fn get_bg_tilemap_display_select(&mut self) -> u16 {
-        if self.get_lcdc().get_bit(3) {
-            TILE_MAP_2
-        } else {
-            TILE_MAP_1
-        }
-    }
-
-    pub fn get_tile_data_select(&mut self) -> u16 {
-        if self.get_lcdc().get_bit(4) {
-            TILE_DATA_2
-        } else {
-            TILE_DATA_1
-        }
     }
 
     pub fn set_interrupt_bit(&mut self) {
