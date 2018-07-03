@@ -6,7 +6,7 @@ mod sizes;
 use bit_ops::BitGetSet;
 use cartridge::Cartridge;
 use self::locations::*;
-use self::video_memory::VideoMemory;
+pub use self::video_memory::VideoMemory;
 pub use self::joypad::JoyPad;
 
 pub struct Memory {
@@ -42,10 +42,6 @@ impl Memory {
 
     pub fn get_video_memory(&mut self) -> &mut VideoMemory {
         &mut self.vram
-    }
-
-    pub fn set_stat(&mut self, value: u8) {
-        self.io[io_regs::STAT - IO_START] = value;
     }
 
     pub fn get_joypad(&mut self) -> &mut JoyPad {

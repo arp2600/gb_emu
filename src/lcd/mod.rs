@@ -1,10 +1,8 @@
-mod lcd_registers;
 mod mode_updater;
 mod pixel_iterator;
-use self::lcd_registers::{LCDRegisters, DrawData};
 use self::mode_updater::ModeUpdater;
 use self::pixel_iterator::PixelIterator;
-use memory::{Memory, locations};
+use memory::{VideoMemory, locations};
 use super::bit_ops::BitGetSet;
 
 pub struct LCD {
@@ -36,46 +34,44 @@ impl LCD {
         self.vblank_flag = false;
     }
 
-    pub fn tick<F>(&mut self, memory: &mut Memory, cycles: u64, mut draw_fn: F)
+    pub fn tick<F>(&mut self, vram: &mut VideoMemory, cycles: u64, mut draw_fn: F)
     where
         F: FnMut(&[u8], u8),
     {
-        let mut regs = LCDRegisters::new(memory);
-        let enabled = regs.check_enabled();
+        let enabled = vram.check_enabled();
         if enabled && !self.enabled {
             self.enabled = true;
             self.update_time = cycles;
             self.mode_updater.init(cycles);
             self.next_ly = 0;
-            regs.set_ly(0);
+            vram.regs.ly = 0;
         }
 
         if self.enabled && cycles >= self.update_time {
             self.update_time += 456;
 
-            let ly = regs.get_ly();
+            let ly = vram.regs.ly;
             if ly < 144 {
-                let draw_data = DrawData::new(&mut regs);
-                draw_line(&draw_data, &mut draw_fn);
+                draw_line(vram, &mut draw_fn);
             } else if ly == 144 {
                 self.vblank_flag = true;
             }
 
             if self.next_ly == 144 {
                 self.frame += 1;
-                regs.set_interrupt_bit();
+                vram.set_interrupt_bit();
             }
 
-            let lyc = regs.get_lyc();
+            let lyc = vram.regs.lyc;
 
-            regs.set_coincidence_flag(ly == lyc);
+            vram.set_coincidence_flag(ly == lyc);
 
-            regs.set_ly(self.next_ly);
+            vram.regs.ly = self.next_ly;
             self.next_ly = self.next_ly.wrapping_add(1) % 154;
         }
 
         if self.enabled {
-            self.mode_updater.update(&mut regs, cycles);
+            self.mode_updater.update(vram, cycles);
         }
     }
 }
@@ -89,32 +85,32 @@ fn create_bgp_data(bgp_value: u8) -> [u8; 4] {
     ]
 }
 
-fn get_bg_tile_index (x: u16, y: u16, regs: &DrawData) -> u16 {
-    let tile_map = regs.get_bg_tilemap_display_select();
+fn get_bg_tile_index (x: u16, y: u16, vram: &VideoMemory) -> u16 {
+    let tile_map = vram.get_bg_tilemap_display_select();
     let i = tile_map + x + 32 * y;
-    u16::from(regs.memory.get_u8(i))
+    u16::from(vram[i as usize])
 }
 
-fn draw_bg(regs: &DrawData, line: &mut[u8; 160]) {
-    let ly = regs.ly;
-    let bgp = create_bgp_data(regs.bgp);
+fn draw_bg(vram: &VideoMemory, line: &mut[u8; 160]) {
+    let ly = vram.regs.ly;
+    let bgp = create_bgp_data(vram.regs.bgp);
 
     // Look at each tile on the current line
     for x in 0..(160 / 8) {
-        let scy = regs.scy;
+        let scy = vram.regs.scy;
         let ly_scy = ly.wrapping_add(scy);
         let y = u16::from(ly_scy / 8);
 
         // Get the index of the tile data
-        let tile_data_index = get_bg_tile_index(x, y, regs);
+        let tile_data_index = get_bg_tile_index(x, y, vram);
 
         // Get the address of the tile
-        let tile_data_start = regs.get_tile_data_select();
+        let tile_data_start = vram.get_tile_data_select();
         let tile_address = tile_data_start + tile_data_index * 16;
         let tile_y_index = u16::from(ly_scy % 8);
         let line_address = tile_address + tile_y_index * 2;
 
-        let pixels = regs.memory.get_u16(line_address);
+        let pixels = vram.get_u16(line_address as usize);
         for (i, pixel) in PixelIterator::new(pixels).enumerate() {
             let line_index = usize::from(x * 8) + i;
             line[line_index] = bgp[pixel as usize];
@@ -122,24 +118,24 @@ fn draw_bg(regs: &DrawData, line: &mut[u8; 160]) {
     }
 }
 
-fn draw_sprites(regs: &DrawData, line: &mut[u8; 160]) {
-    if !regs.are_sprites_enabled() {
+fn draw_sprites(vram: &VideoMemory, line: &mut[u8; 160]) {
+    if !vram.are_sprites_enabled() {
         return;
     }
 
     for i in 0..40 {
-        let oam_index = locations::SPRITE_ATTRIBUTE_TABLE + i * 4;
-        let y = regs.memory.get_u8(oam_index).wrapping_sub(9);
-        let x = regs.memory.get_u8(oam_index + 1).wrapping_sub(8);
-        if y >= regs.ly && y < (regs.ly + 8) {
-            let tile_num = regs.memory.get_u8(oam_index + 2) as u16;
-            let attributes = regs.memory.get_u8(oam_index + 3);
+        let oam_index = usize::from(locations::SPRITE_ATTRIBUTE_TABLE + i * 4);
+        let y = vram[oam_index].wrapping_sub(9);
+        let x = vram[oam_index + 1].wrapping_sub(8);
+        if y >= vram.regs.ly && y < (vram.regs.ly + 8) {
+            let tile_num = vram[usize::from(oam_index + 2)] as u16;
+            let attributes = vram[usize::from(oam_index + 3)];
             let y_flip = attributes.get_bit(6);
             let palette = attributes.get_bit(4) as u8;
-            let obp = create_bgp_data(regs.get_obp(palette));
+            let obp = create_bgp_data(vram.get_obp(palette));
             let tile_address = locations::SPRITE_PATTERN_TABLE + tile_num * 16;
             let tile_y_index = {
-                let y = u16::from(y - regs.ly);
+                let y = u16::from(y - vram.regs.ly);
                 if y_flip {
                     y
                 } else {
@@ -148,7 +144,7 @@ fn draw_sprites(regs: &DrawData, line: &mut[u8; 160]) {
             };
             let line_address = tile_address + tile_y_index * 2;
 
-            let pixels = regs.memory.get_u16(line_address);
+            let pixels = vram.get_u16(line_address as usize);
             for (i, pixel) in PixelIterator::new(pixels).enumerate() {
                 let index = usize::from(x) + i;
                 if index < line.len() {
@@ -161,16 +157,16 @@ fn draw_sprites(regs: &DrawData, line: &mut[u8; 160]) {
     }
 }
 
-fn draw_line<F>(regs: &DrawData, mut draw_fn: F)
+fn draw_line<F>(vram: &VideoMemory, mut draw_fn: F)
 where
     F: FnMut(&[u8], u8),
 {
     let mut line = [0; 160];
 
-    draw_bg(regs, &mut line);
-    draw_sprites(regs, &mut line);
+    draw_bg(vram, &mut line);
+    draw_sprites(vram, &mut line);
 
-    let ly = regs.ly;
+    let ly = vram.regs.ly;
     draw_fn(&line, ly);
 }
 

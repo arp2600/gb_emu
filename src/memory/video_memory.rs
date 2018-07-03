@@ -5,14 +5,14 @@ use bit_ops::BitGetSet;
 
 #[derive(Default)]
 pub struct VideoRegisters {
-    lcdc: u8,
-    ly: u8,
-    lyc: u8,
-    stat: u8,
-    scy: u8,
-    bgp: u8,
-    obp0: u8,
-    obp1: u8,
+    pub lcdc: u8,
+    pub ly: u8,
+    pub lyc: u8,
+    pub stat: u8,
+    pub scy: u8,
+    pub bgp: u8,
+    pub obp0: u8,
+    pub obp1: u8,
 }
 
 pub struct VideoMemory {
@@ -25,7 +25,7 @@ impl VideoMemory {
         VideoMemory { vram: [0; sizes::VRAM], regs: Default::default() }
     }
 
-    pub(super) fn get_u16(&self, index: usize) -> u16 {
+    pub fn get_u16(&self, index: usize) -> u16 {
         get_u16(&self.vram, index - locations::VRAM_START)
     }
 
