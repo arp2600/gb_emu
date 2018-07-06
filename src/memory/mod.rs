@@ -7,6 +7,25 @@ pub use self::joypad::JoyPad;
 pub use self::video_memory::VideoMemory;
 use bit_ops::BitGetSet;
 use cartridge::Cartridge;
+use std::collections::HashSet;
+use std::cell::RefCell;
+
+type WarningLog = RefCell<HashSet<usize>>;
+
+macro_rules! warn_once {
+    ( $warn_log:ident, $key:expr, $str:expr, $arg:expr ) => {
+        if !$warn_log.contains(&$key) {
+            eprintln!($str, $arg);
+            $warn_log.insert($key);
+        }
+    };
+    ( $warn_log:ident, $key:expr, $str:expr ) => {
+        if !$warn_log.contains(&$key) {
+            eprintln!($str);
+            $warn_log.insert($key);
+        }
+    };
+}
 
 pub struct Memory {
     boot_rom: Vec<u8>,
@@ -20,6 +39,9 @@ pub struct Memory {
     serial_data: Vec<u8>,
     joypad: JoyPad,
     interrupt_flag: u8,
+    read_warnings: WarningLog,
+    write_warnings: WarningLog,
+    interrupt_warnings: WarningLog,
 }
 
 impl Memory {
@@ -36,6 +58,9 @@ impl Memory {
             serial_data: Vec::new(),
             joypad: JoyPad::new(),
             interrupt_flag: 0,
+            read_warnings: RefCell::new(HashSet::new()),
+            write_warnings: RefCell::new(HashSet::new()),
+            interrupt_warnings: RefCell::new(HashSet::new()),
         }
     }
 
@@ -83,7 +108,8 @@ impl Memory {
                 x
             }
             _ => {
-                // eprintln!("warning: reading from placeholder io {:#06x}", index);
+                let mut warnings = self.read_warnings.borrow_mut();
+                warn_once!(warnings, index, "warning: reading from placeholder io {:#06x}", index);
                 self.io[index - locations::IO_START]
             }
         }
@@ -113,7 +139,8 @@ impl Memory {
                 self.vram.regs.vblank_interrupt_enabled = (value & 1) != 0;
             }
             _ => {
-                // eprintln!("warning: writing to placeholder io {:#06x}", index);
+                let mut warnings = self.write_warnings.borrow_mut();
+                warn_once!(warnings, index, "warning: writing to placeholder io {:#06x}", index);
                 self.io[index - locations::IO_START] = value;
             }
         }
@@ -142,11 +169,14 @@ impl Memory {
             locations::INTERRUPT_ENABLE_REG => {
                 self.interrupt_enable_register = value;
                 if value.get_bit(1) {
-                    eprintln!("Warning: Lcd STAT interrupt not implemented");
+                    let mut w = self.interrupt_warnings.borrow_mut();
+                    warn_once!(w, 1, "warning: Lcd STAT interrupt not implemented");
                 } else if value.get_bit(3) {
-                    eprintln!("Warning: Serial interrupt not implemented");
+                    let mut w = self.interrupt_warnings.borrow_mut();
+                    warn_once!(w, 3, "warning: Serial interrupt not implemented");
                 } else if value.get_bit(4) {
-                    eprintln!("Warning: Joypad interrupt not implemented");
+                    let mut w = self.interrupt_warnings.borrow_mut();
+                    warn_once!(w, 4, "warning: Joypad interrupt not implemented");
                 }
             }
             _ => (),
