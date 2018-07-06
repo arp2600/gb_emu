@@ -1,22 +1,21 @@
 pub mod io_regs;
-pub mod locations;
 pub mod joypad;
-mod video_memory;
+pub mod locations;
 mod sizes;
+mod video_memory;
+pub use self::joypad::JoyPad;
+pub use self::video_memory::VideoMemory;
 use bit_ops::BitGetSet;
 use cartridge::Cartridge;
-use self::locations::*;
-pub use self::video_memory::VideoMemory;
-pub use self::joypad::JoyPad;
 
 pub struct Memory {
     boot_rom: Vec<u8>,
     boot_rom_enabled: bool,
     cartridge: Cartridge,
     vram: VideoMemory,
-    wram: [u8; WRAM_SIZE],
-    io: [u8; IO_SIZE],
-    hram: [u8; HRAM_SIZE],
+    wram: [u8; sizes::WRAM],
+    io: [u8; sizes::IO],
+    hram: [u8; sizes::HRAM],
     interrupt_enable_register: u8,
     serial_data: Vec<u8>,
     joypad: JoyPad,
@@ -29,10 +28,10 @@ impl Memory {
             boot_rom,
             boot_rom_enabled: true,
             cartridge,
-            hram: [0; HRAM_SIZE],
+            hram: [0; sizes::HRAM],
             vram: VideoMemory::new(),
-            wram: [0; WRAM_SIZE],
-            io: [0; IO_SIZE],
+            wram: [0; sizes::WRAM],
+            io: [0; sizes::IO],
             interrupt_enable_register: 0,
             serial_data: Vec::new(),
             joypad: JoyPad::new(),
@@ -58,9 +57,9 @@ impl Memory {
 
     fn dma_transfer(&mut self, source: u8) {
         let start_address = source as u16 * 0x100;
-        for i in 0..OAM_SIZE {
+        for i in 0..sizes::OAM {
             let v = self.get_u8(start_address + i as u16);
-            self.set_u8((OAM_START + i) as u16, v);
+            self.set_u8((locations::OAM_START + i) as u16, v);
         }
     }
 
@@ -85,7 +84,7 @@ impl Memory {
             }
             _ => {
                 // eprintln!("warning: reading from placeholder io {:#06x}", index);
-                self.io[index - IO_START]
+                self.io[index - locations::IO_START]
             }
         }
     }
@@ -115,7 +114,7 @@ impl Memory {
             }
             _ => {
                 // eprintln!("warning: writing to placeholder io {:#06x}", index);
-                self.io[index - IO_START] = value;
+                self.io[index - locations::IO_START] = value;
             }
         }
     }
@@ -123,20 +122,24 @@ impl Memory {
     pub fn set_u8(&mut self, index: u16, value: u8) {
         let index = index as usize;
         match index {
-            ROM_0_START...ROM_0_END => (),
-            ROM_N_START...ROM_N_END => (),
-            VRAM_START...VRAM_END => self.vram[index] = value,
-            EXRAM_START...EXRAM_END => unimplemented!(),
-            WRAM_START...WRAM_END => self.wram[index - WRAM_START] = value,
-            WRAM_ECHO_START...WRAM_ECHO_END => {
-                self.wram[index - WRAM_ECHO_START] = value;
+            locations::ROM_0_START...locations::ROM_0_END => (),
+            locations::ROM_N_START...locations::ROM_N_END => (),
+            locations::VRAM_START...locations::VRAM_END => self.vram[index] = value,
+            locations::EXRAM_START...locations::EXRAM_END => unimplemented!(),
+            locations::WRAM_START...locations::WRAM_END => {
+                self.wram[index - locations::WRAM_START] = value
             }
-            OAM_START...OAM_END => {
+            locations::WRAM_ECHO_START...locations::WRAM_ECHO_END => {
+                self.wram[index - locations::WRAM_ECHO_START] = value;
+            }
+            locations::OAM_START...locations::OAM_END => {
                 self.vram[index] = value;
             }
-            IO_START...IO_END => self.set_io(index, value),
-            HRAM_START...HRAM_END => self.hram[index - HRAM_START] = value,
-            INTERRUPT_ENABLE_REG => {
+            locations::IO_START...locations::IO_END => self.set_io(index, value),
+            locations::HRAM_START...locations::HRAM_END => {
+                self.hram[index - locations::HRAM_START] = value
+            }
+            locations::INTERRUPT_ENABLE_REG => {
                 self.interrupt_enable_register = value;
                 if value.get_bit(1) {
                     eprintln!("Warning: Lcd STAT interrupt not implemented");
@@ -154,16 +157,18 @@ impl Memory {
         let index = index as usize;
         match index {
             x if self.is_valid_boot_rom_index(x) => self.boot_rom[x],
-            ROM_0_START...ROM_0_END => self.cartridge.get_u8(index),
-            ROM_N_START...ROM_N_END => self.cartridge.get_u8(index),
-            VRAM_START...VRAM_END => self.vram[index],
-            EXRAM_START...EXRAM_END => unimplemented!(),
-            WRAM_START...WRAM_END => self.wram[index - WRAM_START],
-            WRAM_ECHO_START...WRAM_ECHO_END => self.wram[index - WRAM_ECHO_START],
-            OAM_START...OAM_END => self.vram[index],
-            IO_START...IO_END => self.get_io(index),
-            HRAM_START...HRAM_END => self.hram[index - HRAM_START],
-            INTERRUPT_ENABLE_REG => self.interrupt_enable_register,
+            locations::ROM_0_START...locations::ROM_0_END => self.cartridge.get_u8(index),
+            locations::ROM_N_START...locations::ROM_N_END => self.cartridge.get_u8(index),
+            locations::VRAM_START...locations::VRAM_END => self.vram[index],
+            locations::EXRAM_START...locations::EXRAM_END => unimplemented!(),
+            locations::WRAM_START...locations::WRAM_END => self.wram[index - locations::WRAM_START],
+            locations::WRAM_ECHO_START...locations::WRAM_ECHO_END => {
+                self.wram[index - locations::WRAM_ECHO_START]
+            }
+            locations::OAM_START...locations::OAM_END => self.vram[index],
+            locations::IO_START...locations::IO_END => self.get_io(index),
+            locations::HRAM_START...locations::HRAM_END => self.hram[index - locations::HRAM_START],
+            locations::INTERRUPT_ENABLE_REG => self.interrupt_enable_register,
             x => {
                 let location = index_to_location(x);
                 panic!("Bad read: {}", location);
@@ -175,15 +180,21 @@ impl Memory {
         let index = index as usize;
         match index {
             x if self.is_valid_boot_rom_index(x) => get_u16(&self.boot_rom, index),
-            ROM_0_START...ROM_0_END => self.cartridge.get_u16(index),
-            ROM_N_START...ROM_N_END => self.cartridge.get_u16(index),
-            VRAM_START...VRAM_END => self.vram.get_u16(index),
-            EXRAM_START...EXRAM_END => unimplemented!(),
-            WRAM_START...WRAM_END => get_u16(&self.wram, index - WRAM_START),
-            WRAM_ECHO_START...WRAM_ECHO_END => get_u16(&self.wram, index - WRAM_ECHO_START),
-            OAM_START...OAM_END => self.vram.get_u16(index),
-            HRAM_START...HRAM_END => get_u16(&self.hram, index - HRAM_START),
-            INTERRUPT_ENABLE_REG => unimplemented!(),
+            locations::ROM_0_START...locations::ROM_0_END => self.cartridge.get_u16(index),
+            locations::ROM_N_START...locations::ROM_N_END => self.cartridge.get_u16(index),
+            locations::VRAM_START...locations::VRAM_END => self.vram.get_u16(index),
+            locations::EXRAM_START...locations::EXRAM_END => unimplemented!(),
+            locations::WRAM_START...locations::WRAM_END => {
+                get_u16(&self.wram, index - locations::WRAM_START)
+            }
+            locations::WRAM_ECHO_START...locations::WRAM_ECHO_END => {
+                get_u16(&self.wram, index - locations::WRAM_ECHO_START)
+            }
+            locations::OAM_START...locations::OAM_END => self.vram.get_u16(index),
+            locations::HRAM_START...locations::HRAM_END => {
+                get_u16(&self.hram, index - locations::HRAM_START)
+            }
+            locations::INTERRUPT_ENABLE_REG => unimplemented!(),
             x => {
                 let location = index_to_location(x);
                 panic!("Bad read: {}", location);
@@ -194,28 +205,28 @@ impl Memory {
     pub fn set_u16(&mut self, index: u16, value: u16) {
         let index = index as usize;
         match index {
-            ROM_0_START...ROM_0_END => bad_write_panic(index),
-            ROM_N_START...ROM_N_END => bad_write_panic(index),
-            VRAM_START...VRAM_END => {
+            locations::ROM_0_START...locations::ROM_0_END => bad_write_panic(index),
+            locations::ROM_N_START...locations::ROM_N_END => bad_write_panic(index),
+            locations::VRAM_START...locations::VRAM_END => {
                 self.vram.set_u16(index, value);
             }
-            EXRAM_START...EXRAM_END => unimplemented!(),
-            WRAM_START...WRAM_END => {
-                set_u16(&mut self.wram, index - WRAM_START, value);
+            locations::EXRAM_START...locations::EXRAM_END => unimplemented!(),
+            locations::WRAM_START...locations::WRAM_END => {
+                set_u16(&mut self.wram, index - locations::WRAM_START, value);
             }
-            WRAM_ECHO_START...WRAM_ECHO_END => {
-                set_u16(&mut self.wram, index - WRAM_ECHO_START, value);
+            locations::WRAM_ECHO_START...locations::WRAM_ECHO_END => {
+                set_u16(&mut self.wram, index - locations::WRAM_ECHO_START, value);
             }
-            OAM_START...OAM_END => {
+            locations::OAM_START...locations::OAM_END => {
                 if value != 0 {
                     println!("OAM {:#06x} set to {:#06x}", index, value);
                 }
                 self.vram.set_u16(index, value);
             }
-            HRAM_START...HRAM_END => {
-                set_u16(&mut self.hram, index - HRAM_START, value);
+            locations::HRAM_START...locations::HRAM_END => {
+                set_u16(&mut self.hram, index - locations::HRAM_START, value);
             }
-            INTERRUPT_ENABLE_REG => unimplemented!(),
+            locations::INTERRUPT_ENABLE_REG => unimplemented!(),
             x => bad_write_panic(x),
         }
     }
@@ -227,17 +238,17 @@ impl Memory {
 
 pub fn index_to_location(index: usize) -> String {
     match index {
-        ROM_0_START...ROM_0_END => format!("ROM bank 0[0x{:x}]", index),
-        ROM_N_START...ROM_N_END => format!("ROM bank n[0x{:x}]", index),
-        VRAM_START...VRAM_END => format!("VRAM[0x{:x}]", index),
-        EXRAM_START...EXRAM_END => format!("EXRAM[0x{:x}]", index),
-        WRAM_START...WRAM_END => format!("WRAM[0x{:x}]", index),
-        WRAM_ECHO_START...WRAM_ECHO_END => format!("ECHO[0x{:x}]", index),
-        OAM_START...OAM_END => format!("OAM[0x{:x}]", index),
+        locations::ROM_0_START...locations::ROM_0_END => format!("ROM bank 0[0x{:x}]", index),
+        locations::ROM_N_START...locations::ROM_N_END => format!("ROM bank n[0x{:x}]", index),
+        locations::VRAM_START...locations::VRAM_END => format!("VRAM[0x{:x}]", index),
+        locations::EXRAM_START...locations::EXRAM_END => format!("EXRAM[0x{:x}]", index),
+        locations::WRAM_START...locations::WRAM_END => format!("WRAM[0x{:x}]", index),
+        locations::WRAM_ECHO_START...locations::WRAM_ECHO_END => format!("ECHO[0x{:x}]", index),
+        locations::OAM_START...locations::OAM_END => format!("OAM[0x{:x}]", index),
         0xfea0...0xfeff => format!("Not usable[0x{:x}]", index),
-        IO_START...IO_END => format!("IO[0x{:x}]", index),
-        HRAM_START...HRAM_END => format!("HRAM[0x{:x}]", index),
-        INTERRUPT_ENABLE_REG => String::from("InterruptEnableRegister"),
+        locations::IO_START...locations::IO_END => format!("IO[0x{:x}]", index),
+        locations::HRAM_START...locations::HRAM_END => format!("HRAM[0x{:x}]", index),
+        locations::INTERRUPT_ENABLE_REG => String::from("InterruptEnableRegister"),
         _ => panic!("Bad index 0x{:x}", index),
     }
 }
