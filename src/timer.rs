@@ -1,6 +1,6 @@
 use super::bit_ops::BitGetSet;
 use super::cpu;
-use super::memory::{Memory, io_regs};
+use super::memory::{io_regs, Memory};
 
 pub struct Timer {
     enabled: bool,

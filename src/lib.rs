@@ -76,8 +76,7 @@ impl Emulator {
     {
         {
             let vram = self.memory.get_video_memory();
-            self.lcd
-                .tick(vram, self.cpu.get_cycles(), &mut draw_fn);
+            self.lcd.tick(vram, self.cpu.get_cycles(), &mut draw_fn);
         }
         self.cpu.tick(&mut self.memory, self.tracing);
         self.timer.tick(&mut self.memory, self.cpu.get_cycles());

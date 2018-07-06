@@ -1,7 +1,7 @@
-use std::ops::{Index, IndexMut};
-use std::default::Default;
-use super::{get_u16, set_u16, sizes, locations};
+use super::{get_u16, locations, set_u16, sizes};
 use bit_ops::BitGetSet;
+use std::default::Default;
+use std::ops::{Index, IndexMut};
 
 #[derive(Default)]
 pub struct VideoRegisters {
@@ -26,7 +26,11 @@ impl VideoMemory {
     pub(super) fn new() -> VideoMemory {
         let vram = [0; sizes::VRAM];
         let oam = [0; sizes::OAM];
-        VideoMemory { vram, oam, regs: Default::default() }
+        VideoMemory {
+            vram,
+            oam,
+            regs: Default::default(),
+        }
     }
 
     pub fn get_u16(&self, index: usize) -> u16 {
@@ -106,9 +110,7 @@ impl Index<usize> for VideoMemory {
             locations::VRAM_START...locations::VRAM_END => {
                 &self.vram[index - locations::VRAM_START]
             }
-            locations::OAM_START...locations::OAM_END => {
-                &self.oam[index - locations::OAM_START]
-            }
+            locations::OAM_START...locations::OAM_END => &self.oam[index - locations::OAM_START],
             _ => panic!("Invalid index for VideoMemory"),
         }
     }

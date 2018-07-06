@@ -7,19 +7,19 @@ pub use self::joypad::JoyPad;
 pub use self::video_memory::VideoMemory;
 use bit_ops::BitGetSet;
 use cartridge::Cartridge;
-use std::collections::HashSet;
 use std::cell::RefCell;
+use std::collections::HashSet;
 
 type WarningLog = RefCell<HashSet<usize>>;
 
 macro_rules! warn_once {
-    ( $warn_log:ident, $key:expr, $str:expr, $arg:expr ) => {
+    ($warn_log:ident, $key:expr, $str:expr, $arg:expr) => {
         if !$warn_log.contains(&$key) {
             eprintln!($str, $arg);
             $warn_log.insert($key);
         }
     };
-    ( $warn_log:ident, $key:expr, $str:expr ) => {
+    ($warn_log:ident, $key:expr, $str:expr) => {
         if !$warn_log.contains(&$key) {
             eprintln!($str);
             $warn_log.insert($key);
@@ -112,7 +112,12 @@ impl Memory {
             }
             _ => {
                 let mut warnings = self.read_warnings.borrow_mut();
-                warn_once!(warnings, index, "warning: reading from placeholder io {:#06x}", index);
+                warn_once!(
+                    warnings,
+                    index,
+                    "warning: reading from placeholder io {:#06x}",
+                    index
+                );
                 self.io[index - locations::IO_START]
             }
         }
@@ -146,7 +151,12 @@ impl Memory {
             }
             _ => {
                 let mut warnings = self.write_warnings.borrow_mut();
-                warn_once!(warnings, index, "warning: writing to placeholder io {:#06x}", index);
+                warn_once!(
+                    warnings,
+                    index,
+                    "warning: writing to placeholder io {:#06x}",
+                    index
+                );
                 self.io[index - locations::IO_START] = value;
             }
         }

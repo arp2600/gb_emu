@@ -2,8 +2,8 @@ mod mode_updater;
 mod pixel_iterator;
 use self::mode_updater::ModeUpdater;
 use self::pixel_iterator::PixelIterator;
-use memory::{VideoMemory, locations};
 use super::bit_ops::BitGetSet;
+use memory::{locations, VideoMemory};
 
 pub struct LCD {
     update_time: u64,
@@ -85,13 +85,13 @@ fn create_bgp_data(bgp_value: u8) -> [u8; 4] {
     ]
 }
 
-fn get_bg_tile_index (x: u16, y: u16, vram: &VideoMemory) -> u16 {
+fn get_bg_tile_index(x: u16, y: u16, vram: &VideoMemory) -> u16 {
     let tile_map = vram.get_bg_tilemap_display_select();
     let i = tile_map + x + 32 * y;
     u16::from(vram[i as usize])
 }
 
-fn draw_bg(vram: &VideoMemory, line: &mut[u8; 160]) {
+fn draw_bg(vram: &VideoMemory, line: &mut [u8; 160]) {
     let ly = vram.regs.ly;
     let bgp = create_bgp_data(vram.regs.bgp);
 
@@ -118,7 +118,7 @@ fn draw_bg(vram: &VideoMemory, line: &mut[u8; 160]) {
     }
 }
 
-fn draw_sprites(vram: &VideoMemory, line: &mut[u8; 160]) {
+fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
     if !vram.are_sprites_enabled() {
         return;
     }
@@ -174,7 +174,7 @@ where
 mod tests {
     use cartridge::Cartridge;
     use lcd::LCD;
-    use memory::{Memory, io_regs};
+    use memory::{io_regs, Memory};
 
     // Check lcd against old algorithm for calculating ly register
     #[test]
