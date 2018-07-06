@@ -107,6 +107,9 @@ impl Memory {
                 }
                 x
             }
+            io_regs::DIV | io_regs::TIMA | io_regs::TMA | io_regs::TAC => {
+                self.io[index - locations::IO_START]
+            }
             _ => {
                 let mut warnings = self.read_warnings.borrow_mut();
                 warn_once!(warnings, index, "warning: reading from placeholder io {:#06x}", index);
@@ -137,6 +140,9 @@ impl Memory {
             io_regs::IF => {
                 self.interrupt_flag = value & 0b1111_1110;
                 self.vram.regs.vblank_interrupt_enabled = (value & 1) != 0;
+            }
+            io_regs::DIV | io_regs::TIMA | io_regs::TMA | io_regs::TAC => {
+                self.io[index - locations::IO_START] = value;
             }
             _ => {
                 let mut warnings = self.write_warnings.borrow_mut();
