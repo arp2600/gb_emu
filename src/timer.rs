@@ -6,6 +6,7 @@ pub struct Timer {
     enabled: bool,
     input_clock: u64,
     update_time: u64,
+    div_update_time: u64,
 }
 
 impl Timer {
@@ -14,6 +15,7 @@ impl Timer {
             enabled: false,
             input_clock: 4096,
             update_time: 0,
+            div_update_time: 0,
         }
     }
 
@@ -32,10 +34,21 @@ impl Timer {
                 memory.set_io(io_regs::TIMA, tima + 1);
             }
         }
+
+        if cycles > self.div_update_time {
+            let div = memory.get_io(io_regs::DIV).wrapping_add(1);
+            memory.set_io(io_regs::DIV, div);
+
+            self.div_update_time += self.cpu_cycles_per_div_increment();
+        }
     }
 
     fn cpu_cycles_per_tick(&mut self) -> u64 {
         cpu::CLOCK_SPEED / self.input_clock
+    }
+
+    fn cpu_cycles_per_div_increment(&mut self) -> u64 {
+        cpu::CLOCK_SPEED / 16_384
     }
 
     fn read_registers(&mut self, memory: &mut Memory, cycles: u64) -> (u8, u8) {

@@ -1,5 +1,6 @@
 pub const JOYP: usize = 0xff00;
 pub const SB: usize = 0xff01;
+pub const DIV: usize = 0xff04;
 pub const TIMA: usize = 0xff05;
 pub const TMA: usize = 0xff06;
 pub const TAC: usize = 0xff07;
