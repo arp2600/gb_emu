@@ -3,7 +3,6 @@ mod cartridge;
 mod cpu;
 mod lcd;
 mod memory;
-mod memory_values;
 mod opcode_table;
 mod registers;
 mod timer;
@@ -75,8 +74,11 @@ impl Emulator {
     where
         F: FnMut(&[u8], u8),
     {
-        self.lcd
-            .tick(&mut self.memory, self.cpu.get_cycles(), &mut draw_fn);
+        {
+            let vram = self.memory.get_video_memory();
+            self.lcd
+                .tick(vram, self.cpu.get_cycles(), &mut draw_fn);
+        }
         self.cpu.tick(&mut self.memory, self.tracing);
         self.timer.tick(&mut self.memory, self.cpu.get_cycles());
         self.cpu.check_interrupts(&mut self.memory);

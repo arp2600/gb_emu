@@ -1,6 +1,5 @@
 use super::bit_ops::BitGetSet;
-use super::memory::Memory;
-use super::memory_values::io_regs;
+use super::memory::{Memory, io_regs};
 use super::registers::Registers;
 
 pub const CLOCK_SPEED: u64 = 4_194_304;
