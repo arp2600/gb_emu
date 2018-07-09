@@ -5,14 +5,11 @@ const ROM_BANK_SIZE: usize = 0x4000;
 
 enum CartType {
     RomOnly = 0x0,
+    Mbc1 = 0x1,
 }
 
 pub trait Cartridge {
     fn get_u8(&self, index: usize) -> u8;
-}
-
-struct RomOnly {
-    rom: [u8; ROM_BANK_SIZE * 2],
 }
 
 impl Cartridge {
@@ -22,8 +19,6 @@ impl Cartridge {
             panic!("ROM shorter than header length");
         }
         let cart_type = full_rom[locations::CARTRIDGE_TYPE];
-        assert_eq!(cart_type, CartType::RomOnly as u8);
-        println!("Cart type is {:#04x}", cart_type);
 
         if full_rom.len() / 1024 > 32 {
             panic!(
@@ -36,10 +31,22 @@ impl Cartridge {
         let data = &full_rom[..rom.len()];
         rom.copy_from_slice(data); 
 
-        Box::new(RomOnly {
-            rom,
-        })
+        if cart_type == CartType::RomOnly as u8 {
+            Box::new(RomOnly {
+                rom,
+            })
+        } else if cart_type  == CartType::Mbc1 as u8 {
+            Box::new(Mbc1 {
+                rom,
+            })
+        } else {
+            panic!("Cartridge {:#04x} not implemented", cart_type);
+        }
     }
+}
+
+struct RomOnly {
+    rom: [u8; ROM_BANK_SIZE * 2],
 }
 
 impl Cartridge for RomOnly {
@@ -47,6 +54,18 @@ impl Cartridge for RomOnly {
         self.rom[index]
     }
 }
+
+struct Mbc1 {
+    rom: [u8; ROM_BANK_SIZE * 2],
+}
+
+impl Cartridge for Mbc1 {
+    fn get_u8(&self, index: usize) -> u8 {
+        self.rom[index]
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {
