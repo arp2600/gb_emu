@@ -1,15 +1,26 @@
 use std::fs;
+use memory::locations;
 
 const ROM_BANK_SIZE: usize = 0x4000;
 
-pub struct Cartridge {
+pub trait Cartridge {
+    fn get_u8(&self, index: usize) -> u8;
+}
+
+pub struct RomOnly {
     zero_bank: Vec<u8>,
     other_banks: Vec<Vec<u8>>,
 }
 
-impl Cartridge {
-    pub fn from_file(file_path: &str) -> Cartridge {
+impl RomOnly {
+    pub fn from_file(file_path: &str) -> RomOnly {
         let mut full_rom = fs::read(file_path).unwrap();
+        if full_rom.len() < 0x150 {
+            panic!("ROM shorter than header length");
+        }
+        let cart_type = full_rom[locations::CARTRIDGE_TYPE];
+        println!("Cart type is {:#04x}", cart_type);
+
         if full_rom.len() / 1024 > 32 {
             panic!(
                 "Roms size {} KB is not supported yet. Max size is 32 KB",
@@ -29,24 +40,20 @@ impl Cartridge {
             assert_eq!(bank.len(), ROM_BANK_SIZE);
         }
 
-        Cartridge {
+        RomOnly {
             zero_bank: full_rom,
             other_banks,
         }
     }
+}
 
-    pub fn get_u8(&self, index: usize) -> u8 {
+impl Cartridge for RomOnly {
+    fn get_u8(&self, index: usize) -> u8 {
         match index {
             0x0...0x3fff => self.zero_bank[index],
             0x4000...0x7fff => self.other_banks[0][index - 0x4000],
             _ => panic!("Bad read at {}", index),
         }
-    }
-
-    pub fn get_u16(&self, index: usize) -> u16 {
-        let low = u16::from(self.get_u8(index));
-        let high = u16::from(self.get_u8(index + 1));
-        (high << 8) | low
     }
 }
 

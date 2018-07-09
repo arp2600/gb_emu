@@ -1,3 +1,5 @@
+pub const CARTRIDGE_TYPE: usize = 0x147;
+
 pub const ROM_0_START: usize = 0x0000;
 pub const ROM_0_END: usize = 0x3fff;
 

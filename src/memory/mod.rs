@@ -12,7 +12,7 @@ use std::collections::HashSet;
 pub struct Memory {
     boot_rom: Vec<u8>,
     boot_rom_enabled: bool,
-    cartridge: Cartridge,
+    cartridge: Box<Cartridge>,
     vram: VideoMemory,
     wram: [u8; sizes::WRAM],
     io: [u8; sizes::IO],
@@ -24,7 +24,7 @@ pub struct Memory {
 }
 
 impl Memory {
-    pub fn new(boot_rom: Vec<u8>, cartridge: Cartridge) -> Memory {
+    pub fn new(boot_rom: Vec<u8>, cartridge: Box<Cartridge>) -> Memory {
         Memory {
             boot_rom,
             boot_rom_enabled: true,
@@ -198,8 +198,16 @@ impl Memory {
         let index = index as usize;
         match index {
             x if self.is_valid_boot_rom_index(x) => get_u16(&self.boot_rom, index),
-            locations::ROM_0_START...locations::ROM_0_END => self.cartridge.get_u16(index),
-            locations::ROM_N_START...locations::ROM_N_END => self.cartridge.get_u16(index),
+            locations::ROM_0_START...locations::ROM_0_END => {
+                let low = u16::from(self.cartridge.get_u8(index));
+                let high = u16::from(self.cartridge.get_u8(index + 1));
+                (high << 8) | low
+            }
+            locations::ROM_N_START...locations::ROM_N_END => {
+                let low = u16::from(self.cartridge.get_u8(index));
+                let high = u16::from(self.cartridge.get_u8(index + 1));
+                (high << 8) | low
+            }
             locations::VRAM_START...locations::VRAM_END => self.vram.get_u16(index),
             locations::EXRAM_START...locations::EXRAM_END => unimplemented!(),
             locations::WRAM_START...locations::WRAM_END => {
