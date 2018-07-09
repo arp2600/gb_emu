@@ -11,12 +11,12 @@ pub trait Cartridge {
     fn get_u8(&self, index: usize) -> u8;
 }
 
-pub struct RomOnly {
+struct RomOnly {
     rom: [u8; ROM_BANK_SIZE * 2],
 }
 
-impl RomOnly {
-    pub fn from_file(file_path: &str) -> RomOnly {
+impl Cartridge {
+    pub fn from_file(file_path: &str) -> Box<Cartridge> {
         let full_rom = fs::read(file_path).unwrap();
         if full_rom.len() < 0x150 {
             panic!("ROM shorter than header length");
@@ -36,9 +36,9 @@ impl RomOnly {
         let data = &full_rom[..rom.len()];
         rom.copy_from_slice(data); 
 
-        RomOnly {
+        Box::new(RomOnly {
             rom,
-        }
+        })
     }
 }
 

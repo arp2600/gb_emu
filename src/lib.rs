@@ -10,7 +10,7 @@ mod memory;
 mod opcode_table;
 mod registers;
 mod timer;
-use cartridge::RomOnly;
+use cartridge::Cartridge;
 use cpu::Cpu;
 use lcd::LCD;
 pub use memory::JoyPad;
@@ -36,7 +36,7 @@ pub struct Emulator {
 impl Emulator {
     pub fn new(boot_rom_path: Option<&str>, cartridge_rom_path: &str) -> Emulator {
         let cpu = Cpu::new();
-        let cartridge = Box::new(RomOnly::from_file(cartridge_rom_path));
+        let cartridge = Cartridge::from_file(cartridge_rom_path);
         let boot_rom = match boot_rom_path {
             Some(x) => fs::read(x).unwrap(),
             None => {
