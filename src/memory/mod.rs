@@ -194,69 +194,6 @@ impl Memory {
         }
     }
 
-    pub fn get_u16(&self, index: u16) -> u16 {
-        let index = index as usize;
-        match index {
-            x if self.is_valid_boot_rom_index(x) => get_u16(&self.boot_rom, index),
-            locations::ROM_0_START...locations::ROM_0_END => {
-                let low = u16::from(self.cartridge.get_u8(index));
-                let high = u16::from(self.cartridge.get_u8(index + 1));
-                (high << 8) | low
-            }
-            locations::ROM_N_START...locations::ROM_N_END => {
-                let low = u16::from(self.cartridge.get_u8(index));
-                let high = u16::from(self.cartridge.get_u8(index + 1));
-                (high << 8) | low
-            }
-            locations::VRAM_START...locations::VRAM_END => self.vram.get_u16(index),
-            locations::EXRAM_START...locations::EXRAM_END => unimplemented!(),
-            locations::WRAM_START...locations::WRAM_END => {
-                get_u16(&self.wram, index - locations::WRAM_START)
-            }
-            locations::WRAM_ECHO_START...locations::WRAM_ECHO_END => {
-                get_u16(&self.wram, index - locations::WRAM_ECHO_START)
-            }
-            locations::OAM_START...locations::OAM_END => self.vram.get_u16(index),
-            locations::HRAM_START...locations::HRAM_END => {
-                get_u16(&self.hram, index - locations::HRAM_START)
-            }
-            locations::INTERRUPT_ENABLE_REG => unimplemented!(),
-            x => {
-                let location = index_to_location(x);
-                panic!("Bad read: {}", location);
-            }
-        }
-    }
-
-    pub fn set_u16(&mut self, index: u16, value: u16) {
-        let index = index as usize;
-        match index {
-            locations::ROM_0_START...locations::ROM_0_END => bad_write_panic(index),
-            locations::ROM_N_START...locations::ROM_N_END => bad_write_panic(index),
-            locations::VRAM_START...locations::VRAM_END => {
-                self.vram.set_u16(index, value);
-            }
-            locations::EXRAM_START...locations::EXRAM_END => unimplemented!(),
-            locations::WRAM_START...locations::WRAM_END => {
-                set_u16(&mut self.wram, index - locations::WRAM_START, value);
-            }
-            locations::WRAM_ECHO_START...locations::WRAM_ECHO_END => {
-                set_u16(&mut self.wram, index - locations::WRAM_ECHO_START, value);
-            }
-            locations::OAM_START...locations::OAM_END => {
-                if value != 0 {
-                    println!("OAM {:#06x} set to {:#06x}", index, value);
-                }
-                self.vram.set_u16(index, value);
-            }
-            locations::HRAM_START...locations::HRAM_END => {
-                set_u16(&mut self.hram, index - locations::HRAM_START, value);
-            }
-            locations::INTERRUPT_ENABLE_REG => unimplemented!(),
-            x => bad_write_panic(x),
-        }
-    }
-
     fn is_valid_boot_rom_index(&self, index: usize) -> bool {
         self.boot_rom_enabled && index < self.boot_rom.len()
     }
@@ -300,21 +237,4 @@ fn io_reg_name(index: usize) -> String {
         io_regs::NR13 => format!("NR13 - Channel 1 Frequency lo"),
         _ => format!("{:#06x}", index),
     }
-}
-
-fn get_u16(mem: &[u8], index: usize) -> u16 {
-    let high = u16::from(mem[index + 1]);
-    let low = u16::from(mem[index]);
-    (high << 8) | low
-}
-
-fn set_u16(mem: &mut [u8], index: usize, value: u16) {
-    let high = value >> 8;
-    let low = value & 0xff;
-    mem[index + 1] = high as u8;
-    mem[index] = low as u8;
-}
-
-fn bad_write_panic(index: usize) {
-    panic!("Cannot write to {}", index_to_location(index));
 }

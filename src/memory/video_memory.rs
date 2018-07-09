@@ -1,4 +1,4 @@
-use super::{get_u16, locations, set_u16, sizes};
+use super::{locations, sizes};
 use bit_ops::BitGetSet;
 use std::default::Default;
 use std::ops::{Index, IndexMut};
@@ -40,18 +40,6 @@ impl VideoMemory {
             }
             locations::OAM_START...locations::OAM_END => {
                 get_u16(&self.oam, index - locations::OAM_START)
-            }
-            _ => panic!("Invalid index for VideoMemory"),
-        }
-    }
-
-    pub(super) fn set_u16(&mut self, index: usize, value: u16) {
-        match index {
-            locations::VRAM_START...locations::VRAM_END => {
-                set_u16(&mut self.vram, index - locations::VRAM_START, value);
-            }
-            locations::OAM_START...locations::OAM_END => {
-                set_u16(&mut self.oam, index - locations::OAM_START, value);
             }
             _ => panic!("Invalid index for VideoMemory"),
         }
@@ -136,4 +124,10 @@ impl IndexMut<usize> for VideoMemory {
             _ => panic!("Invalid index for VideoMemory"),
         }
     }
+}
+
+fn get_u16(mem: &[u8], index: usize) -> u16 {
+    let high = u16::from(mem[index + 1]);
+    let low = u16::from(mem[index]);
+    (high << 8) | low
 }

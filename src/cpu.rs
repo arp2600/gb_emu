@@ -645,16 +645,21 @@ impl Cpu {
     }
 
     fn load_imm_u16(&self, memory: &Memory) -> u16 {
-        memory.get_u16(self.registers.pc + 1)
+        let low = memory.get_u8(self.registers.pc + 1);
+        let high = memory.get_u8(self.registers.pc + 2);
+        as_u16(low, high)
     }
 
     fn push_stack_u16(&mut self, value: u16, memory: &mut Memory) {
         self.registers.sp -= 2;
-        memory.set_u16(self.registers.sp, value);
+        memory.set_u8(self.registers.sp, (value & 0xff) as u8);
+        memory.set_u8(self.registers.sp + 1, (value >> 8) as u8);
     }
 
     fn pop_stack_u16(&mut self, memory: &Memory) -> u16 {
-        let v = memory.get_u16(self.registers.sp);
+        let low = memory.get_u8(self.registers.sp);
+        let high = memory.get_u8(self.registers.sp + 1);
+        let v = as_u16(low, high);
         self.registers.sp += 2;
         v
     }
@@ -1037,7 +1042,8 @@ impl Cpu {
 
     fn ld_nn_sp(&mut self, memory: &mut Memory) {
         let nn = self.load_imm_u16(memory);
-        memory.set_u16(nn, self.registers.sp);
+        memory.set_u8(nn, (self.registers.sp & 0xff) as u8);
+        memory.set_u8(nn + 1, (self.registers.sp >> 8) as u8);
 
         self.registers.pc += 3;
         self.cycles += 20;
@@ -1700,6 +1706,10 @@ impl Cpu {
             _ => self.cycles += 8,
         }
     }
+}
+
+fn as_u16(low: u8, high: u8) -> u16 {
+    (u16::from(high) << 8) | u16::from(low)
 }
 
 // Add a 'signed' u8 to an unsigned u16
