@@ -59,20 +59,20 @@ impl Cartridge for RomOnly {
 
 #[cfg(test)]
 mod tests {
-    use cartridge::Cartridge;
+    use cartridge::{Cartridge, RomOnly};
     use cartridge::ROM_BANK_SIZE;
 
     impl Cartridge {
-        pub fn create_dummy() -> Cartridge {
+        pub fn create_dummy() -> Box<Cartridge> {
             let zero_bank = vec![0; ROM_BANK_SIZE];
             let other_banks = {
                 let x = vec![0; ROM_BANK_SIZE];
                 vec![x]
             };
-            Cartridge {
+            Box::new(RomOnly {
                 zero_bank,
                 other_banks,
-            }
+            })
         }
     }
 }
