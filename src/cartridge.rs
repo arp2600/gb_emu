@@ -10,6 +10,7 @@ enum CartType {
 
 pub trait Cartridge {
     fn get_u8(&self, index: usize) -> u8;
+    fn set_u8(&mut self, index: usize, value: u8);
 }
 
 impl Cartridge {
@@ -53,6 +54,10 @@ impl Cartridge for RomOnly {
     fn get_u8(&self, index: usize) -> u8 {
         self.rom[index]
     }
+
+    fn set_u8(&mut self, index: usize, value: u8) {
+        panic!("Cannot write to RomOnly cartridge");
+    }
 }
 
 struct Mbc1 {
@@ -62,6 +67,10 @@ struct Mbc1 {
 impl Cartridge for Mbc1 {
     fn get_u8(&self, index: usize) -> u8 {
         self.rom[index]
+    }
+
+    fn set_u8(&mut self, index: usize, value: u8) {
+        unimplemented!();
     }
 }
 

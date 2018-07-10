@@ -140,8 +140,8 @@ impl Memory {
     pub fn set_u8(&mut self, index: u16, value: u8) {
         let index = index as usize;
         match index {
-            locations::ROM_0_START...locations::ROM_0_END => (),
-            locations::ROM_N_START...locations::ROM_N_END => (),
+            locations::ROM_0_START...locations::ROM_0_END => self.cartridge.set_u8(index, value),
+            locations::ROM_N_START...locations::ROM_N_END => self.cartridge.set_u8(index, value),
             locations::VRAM_START...locations::VRAM_END => self.vram[index] = value,
             locations::EXRAM_START...locations::EXRAM_END => unimplemented!(),
             locations::WRAM_START...locations::WRAM_END => {
