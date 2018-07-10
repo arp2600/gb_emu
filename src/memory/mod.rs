@@ -143,7 +143,7 @@ impl Memory {
             locations::ROM_0_START...locations::ROM_0_END => self.cartridge.set_u8(index, value),
             locations::ROM_N_START...locations::ROM_N_END => self.cartridge.set_u8(index, value),
             locations::VRAM_START...locations::VRAM_END => self.vram[index] = value,
-            locations::EXRAM_START...locations::EXRAM_END => unimplemented!(),
+            locations::EXRAM_START...locations::EXRAM_END => self.cartridge.set_u8(index, value),
             locations::WRAM_START...locations::WRAM_END => {
                 self.wram[index - locations::WRAM_START] = value
             }
@@ -178,7 +178,7 @@ impl Memory {
             locations::ROM_0_START...locations::ROM_0_END => self.cartridge.get_u8(index),
             locations::ROM_N_START...locations::ROM_N_END => self.cartridge.get_u8(index),
             locations::VRAM_START...locations::VRAM_END => self.vram[index],
-            locations::EXRAM_START...locations::EXRAM_END => unimplemented!(),
+            locations::EXRAM_START...locations::EXRAM_END => self.cartridge.get_u8(index),
             locations::WRAM_START...locations::WRAM_END => self.wram[index - locations::WRAM_START],
             locations::WRAM_ECHO_START...locations::WRAM_ECHO_END => {
                 self.wram[index - locations::WRAM_ECHO_START]
