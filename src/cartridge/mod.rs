@@ -8,8 +8,18 @@ use std::fs;
 const ROM_BANK_SIZE: usize = 0x4000;
 
 enum CartType {
-    RomOnly = 0x0,
-    Mbc1 = 0x1,
+    RomOnly,
+    Mbc1,
+}
+
+impl CartType {
+    fn try_from_u8(value: u8) -> Result<CartType, String> {
+        match value {
+            0x00 => Ok(CartType::RomOnly),
+            0x01 => Ok(CartType::Mbc1),
+            _ => Err(format!("Unknown cart type {:#04x}", value)),
+        }
+    }
 }
 
 pub trait Cartridge {
@@ -23,17 +33,15 @@ impl Cartridge {
         if full_rom.len() < 0x150 {
             panic!("ROM shorter than header length");
         }
-        let cart_type = full_rom[CARTRIDGE_TYPE];
-
-        if cart_type == CartType::RomOnly as u8 {
-            let mut rom = [0; ROM_BANK_SIZE * 2];
-            let data = &full_rom[..rom.len()];
-            rom.copy_from_slice(data);
-            Box::new(RomOnly { rom })
-        } else if cart_type == CartType::Mbc1 as u8 {
-            Box::new(Mbc1::new(&full_rom))
-        } else {
-            panic!("Cartridge {:#04x} not implemented", cart_type);
+        let cart_type = CartType::try_from_u8(full_rom[CARTRIDGE_TYPE]).unwrap();
+        match cart_type {
+            CartType::RomOnly => {
+                let mut rom = [0; ROM_BANK_SIZE * 2];
+                let data = &full_rom[..rom.len()];
+                rom.copy_from_slice(data);
+                Box::new(RomOnly { rom })
+            }
+            CartType::Mbc1 => Box::new(Mbc1::new(&full_rom)),
         }
     }
 }
