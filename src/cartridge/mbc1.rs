@@ -1,5 +1,5 @@
-use memory::locations::*;
 use super::{Cartridge, ROM_BANK_SIZE};
+use memory::locations::*;
 
 pub struct Mbc1 {
     rom_bank_zero: Vec<u8>,
@@ -19,7 +19,11 @@ impl Mbc1 {
             other_rom_banks.push(bank.to_vec());
         }
 
-        Mbc1 { rom_bank_zero, other_rom_banks, rom_bank_index: 1 }
+        Mbc1 {
+            rom_bank_zero,
+            other_rom_banks,
+            rom_bank_index: 1,
+        }
     }
 }
 
@@ -39,12 +43,10 @@ impl Cartridge for Mbc1 {
         match index {
             EXRAM_START...EXRAM_END => unimplemented!(),
             0x0000...0x1fff => unimplemented!("ram enable"),
-            0x2000...0x3fff => {
-                match value {
-                    0 => self.rom_bank_index = 1,
-                    _ => self.rom_bank_index = usize::from(value),
-                }
-            }
+            0x2000...0x3fff => match value {
+                0 => self.rom_bank_index = 1,
+                _ => self.rom_bank_index = usize::from(value),
+            },
             0x4000...0x5fff => unimplemented!("ram bank number"),
             0x6000...0x7fff => unimplemented!("rom/ram mode select"),
             _ => panic!("bad write index"),

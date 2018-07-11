@@ -10,7 +10,9 @@ impl Cartridge for RomOnly {
     }
 
     fn set_u8(&mut self, index: usize, value: u8) {
-        eprintln!("warning: attempting to write to RomOnly cartridge at {:#06x} with value {:#04x}", index, value);
+        eprintln!(
+            "warning: attempting to write to RomOnly cartridge at {:#06x} with value {:#04x}",
+            index, value
+        );
     }
 }
-
