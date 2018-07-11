@@ -4,6 +4,11 @@ use std::path::Path;
 use std::str;
 
 #[test]
+fn cpu_instrs() {
+    run_test_rom("cpu_instrs.gb", 30_000_000);
+}
+
+#[test]
 fn special() {
     run_test_rom("individual/01-special.gb", 3_000_000);
 }

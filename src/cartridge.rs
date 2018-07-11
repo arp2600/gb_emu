@@ -21,14 +21,6 @@ impl Cartridge {
         }
         let cart_type = full_rom[CARTRIDGE_TYPE];
 
-        if full_rom.len() / 1024 > 32 {
-            panic!(
-                "Roms size {} KB is not supported yet. Max size is 32 KB",
-                full_rom.len() / 1024
-            );
-        }
-        assert_eq!(full_rom.len(), ROM_BANK_SIZE * 2);
-
         if cart_type == CartType::RomOnly as u8 {
             let mut rom = [0; ROM_BANK_SIZE * 2];
             let data = &full_rom[..rom.len()];
@@ -84,7 +76,10 @@ impl Cartridge for Mbc1 {
     fn get_u8(&self, index: usize) -> u8 {
         match index {
             ROM_0_START...ROM_0_END => self.rom_bank_zero[index],
-            ROM_N_START...ROM_N_END => self.other_rom_banks[self.rom_bank_index - 1][index - ROM_BANK_SIZE],
+            ROM_N_START...ROM_N_END => {
+                let bank = &self.other_rom_banks[self.rom_bank_index - 1];
+                bank[index - ROM_BANK_SIZE]
+            }
             _ => unimplemented!(),
         }
     }
@@ -93,7 +88,12 @@ impl Cartridge for Mbc1 {
         match index {
             EXRAM_START...EXRAM_END => unimplemented!(),
             0x0000...0x1fff => unimplemented!("ram enable"),
-            0x2000...0x3fff => unimplemented!("rom bank number"),
+            0x2000...0x3fff => {
+                match value {
+                    0 => self.rom_bank_index = 1,
+                    _ => self.rom_bank_index = usize::from(value),
+                }
+            }
             0x4000...0x5fff => unimplemented!("ram bank number"),
             0x6000...0x7fff => unimplemented!("rom/ram mode select"),
             _ => panic!("bad write index"),

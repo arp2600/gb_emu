@@ -760,7 +760,8 @@ impl Cpu {
     }
 
     fn stop(&mut self) {
-        unimplemented!();
+        eprintln!("warning: ignoring over stop instruction");
+        self.registers.pc += 2;
     }
 
     fn rrc_n(&mut self, opcode: u8, memory: &mut Memory) {
