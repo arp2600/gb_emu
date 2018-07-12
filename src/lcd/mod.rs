@@ -106,7 +106,17 @@ fn draw_bg(vram: &VideoMemory, line: &mut [u8; 160]) {
 
         // Get the address of the tile
         let tile_data_start = vram.get_tile_data_select();
-        let tile_address = tile_data_start + tile_data_index * 16;
+        let tile_address = match tile_data_start {
+            locations::TILE_DATA_1 => {
+                let x = tile_data_index as i16 * 16;
+                let x = (x + (128 * 16)) as u16;
+                tile_data_start + x
+            }
+            locations::TILE_DATA_2 => {
+                tile_data_start + tile_data_index * 16
+            }
+            _ => unreachable!(),
+        };
         let tile_y_index = u16::from(ly_scy % 8);
         let line_address = tile_address + tile_y_index * 2;
 
