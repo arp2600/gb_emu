@@ -13,15 +13,9 @@ use std::collections::HashSet;
 type WarningLog = RefCell<HashSet<usize>>;
 
 macro_rules! warn_once {
-    ($warn_log:ident, $key:expr, $str:expr, $arg:expr) => {
-        if !$warn_log.contains(&$key) {
-            eprintln!($str, $arg);
-            $warn_log.insert($key);
-        }
-    };
     ($warn_log:ident, $key:expr, $str:expr) => {
         if !$warn_log.contains(&$key) {
-            eprintln!($str);
+            eprintln!("{}", $str);
             $warn_log.insert($key);
         }
     };
@@ -115,8 +109,10 @@ impl Memory {
                 warn_once!(
                     warnings,
                     index,
-                    "warning: reading from placeholder io {}",
-                    io_reg_name(index)
+                    format!(
+                        "warning: reading from placeholder io {}",
+                        io_reg_name(index)
+                    )
                 );
                 self.io[index - locations::IO_START]
             }
@@ -154,8 +150,11 @@ impl Memory {
                 warn_once!(
                     warnings,
                     index,
-                    "warning: writing to placeholder io {}",
-                    io_reg_name(index)
+                    format!(
+                        "warning: writing {:#04x} to placeholder io {}",
+                        value,
+                        io_reg_name(index)
+                    )
                 );
                 self.io[index - locations::IO_START] = value;
             }
@@ -186,13 +185,13 @@ impl Memory {
                 self.interrupt_enable_register = value;
                 if value.get_bit(1) {
                     let mut w = self.interrupt_warnings.borrow_mut();
-                    warn_once!(w, 1, "warning: Lcd STAT interrupt not implemented");
+                    warn_once!(w, 1, format!("warning: Lcd STAT interrupt not implemented"));
                 } else if value.get_bit(3) {
                     let mut w = self.interrupt_warnings.borrow_mut();
-                    warn_once!(w, 3, "warning: Serial interrupt not implemented");
+                    warn_once!(w, 3, format!("warning: Serial interrupt not implemented"));
                 } else if value.get_bit(4) {
                     let mut w = self.interrupt_warnings.borrow_mut();
-                    warn_once!(w, 4, "warning: Joypad interrupt not implemented");
+                    warn_once!(w, 4, format!("warning: Joypad interrupt not implemented"));
                 }
             }
             _ => (),
