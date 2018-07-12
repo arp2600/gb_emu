@@ -113,9 +113,7 @@ fn draw_bg(vram: &VideoMemory, line: &mut [u8; 160]) {
                 let x = ((x + 128) * 16) as u16;
                 tile_data_start + x
             }
-            locations::TILE_DATA_2 => {
-                tile_data_start + tile_data_index * 16
-            }
+            locations::TILE_DATA_2 => tile_data_start + tile_data_index * 16,
             _ => unreachable!(),
         };
         let tile_y_index = u16::from(ly_scy % 8);
