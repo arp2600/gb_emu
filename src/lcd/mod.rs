@@ -5,6 +5,20 @@ use self::pixel_iterator::PixelIterator;
 use super::bit_ops::BitGetSet;
 use memory::{locations, VideoMemory};
 
+// this will only print once
+// useful for not spamming duplicate warnings
+macro_rules! eprintln_once {
+    ($($args:tt)*) => {
+        unsafe {
+            static mut PRINTED: bool = false;
+            if !PRINTED {
+                eprintln!($($args)*);
+                PRINTED = true;
+            }
+        }
+    };
+}
+
 pub struct LCD {
     update_time: u64,
     enabled: bool,
@@ -145,6 +159,12 @@ fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
         if y >= vram.regs.ly && y < (vram.regs.ly + 8) {
             let tile_num = vram[usize::from(oam_index + 2)] as u16;
             let attributes = vram[usize::from(oam_index + 3)];
+
+            if attributes.get_bit(7) {
+                eprintln_once!("warning: using placeholder implementation of sprite bg priority");
+                continue;
+            }
+
             let y_flip = attributes.get_bit(6);
             let x_flip = attributes.get_bit(5);
             let palette = attributes.get_bit(4) as u8;
