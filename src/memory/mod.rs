@@ -7,16 +7,35 @@ pub use self::joypad::JoyPad;
 pub use self::video_memory::VideoMemory;
 use bit_ops::BitGetSet;
 use cartridge::Cartridge;
-use std::cell::RefCell;
 use std::collections::HashSet;
 
-type WarningLog = RefCell<HashSet<usize>>;
-
-macro_rules! warn_once {
-    ($warn_log:ident, $key:expr, $str:expr) => {
-        if !$warn_log.contains(&$key) {
-            eprintln!("{}", $str);
-            $warn_log.insert($key);
+// this will only print once
+// useful for not spamming duplicate warnings
+macro_rules! eprintln_once {
+    ($($args:tt)*) => {
+        unsafe {
+            static mut PRINTED: bool = false;
+            if !PRINTED {
+                eprintln!($($args)*);
+                PRINTED = true;
+            }
+        }
+    };
+}
+// this will only print once per key
+// useful for not spamming duplicate warnings
+macro_rules! eprintln_once_per_key {
+    ($key:expr, $type:ty, $($args:tt)*) => {
+        use std::sync::Mutex;
+        lazy_static! {
+            static ref PRINTED_MAP: Mutex<HashSet<$type>> = {
+                Mutex::new(HashSet::new())
+            };
+        }
+        let mut map = PRINTED_MAP.lock().unwrap();
+        if !map.contains(&$key) {
+            eprintln!($($args)*);
+            map.insert($key);
         }
     };
 }
@@ -33,9 +52,6 @@ pub struct Memory {
     serial_data: Vec<u8>,
     joypad: JoyPad,
     interrupt_flag: u8,
-    read_warnings: WarningLog,
-    write_warnings: WarningLog,
-    interrupt_warnings: WarningLog,
 }
 
 impl Memory {
@@ -52,9 +68,6 @@ impl Memory {
             serial_data: Vec::new(),
             joypad: JoyPad::new(),
             interrupt_flag: 0,
-            read_warnings: RefCell::new(HashSet::new()),
-            write_warnings: RefCell::new(HashSet::new()),
-            interrupt_warnings: RefCell::new(HashSet::new()),
         }
     }
 
@@ -105,14 +118,11 @@ impl Memory {
                 self.io[index - locations::IO_START]
             }
             _ => {
-                let mut warnings = self.read_warnings.borrow_mut();
-                warn_once!(
-                    warnings,
+                eprintln_once_per_key!(
                     index,
-                    format!(
-                        "warning: reading from placeholder io {}",
-                        io_reg_name(index)
-                    )
+                    usize,
+                    "warning: reading from placeholder io {}",
+                    io_reg_name(index)
                 );
                 self.io[index - locations::IO_START]
             }
@@ -146,15 +156,12 @@ impl Memory {
                 self.io[index - locations::IO_START] = value;
             }
             _ => {
-                let mut warnings = self.write_warnings.borrow_mut();
-                warn_once!(
-                    warnings,
+                eprintln_once_per_key!(
                     index,
-                    format!(
-                        "warning: writing {:#04x} to placeholder io {}",
-                        value,
-                        io_reg_name(index)
-                    )
+                    usize,
+                    "warning: writing {:#04x} to placeholder io {}",
+                    value,
+                    io_reg_name(index)
                 );
                 self.io[index - locations::IO_START] = value;
             }
@@ -184,14 +191,11 @@ impl Memory {
             locations::INTERRUPT_ENABLE_REG => {
                 self.interrupt_enable_register = value;
                 if value.get_bit(1) {
-                    let mut w = self.interrupt_warnings.borrow_mut();
-                    warn_once!(w, 1, format!("warning: Lcd STAT interrupt not implemented"));
+                    eprintln_once!("warning: Lcd STAT interrupt not implemented");
                 } else if value.get_bit(3) {
-                    let mut w = self.interrupt_warnings.borrow_mut();
-                    warn_once!(w, 3, format!("warning: Serial interrupt not implemented"));
+                    eprintln_once!("warning: Serial interrupt not implemented");
                 } else if value.get_bit(4) {
-                    let mut w = self.interrupt_warnings.borrow_mut();
-                    warn_once!(w, 4, format!("warning: Joypad interrupt not implemented"));
+                    eprintln_once!("warning: Joypad interrupt not implemented");
                 }
             }
             _ => (),
