@@ -85,6 +85,14 @@ impl VideoMemory {
         }
     }
 
+    pub fn get_sprite_width(&self) -> u8 {
+        if self.regs.lcdc.get_bit(2) {
+            16
+        } else {
+            8
+        }
+    }
+
     pub fn check_enabled(&mut self) -> bool {
         self.regs.lcdc.get_bit(7)
     }

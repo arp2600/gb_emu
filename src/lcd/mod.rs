@@ -134,6 +134,10 @@ fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
         return;
     }
 
+    if vram.get_sprite_width() == 16 {
+        panic!("Sprite width of 16 is unsupported");
+    }
+
     for i in 0..40 {
         let oam_index = usize::from(locations::SPRITE_ATTRIBUTE_TABLE + i * 4);
         let y = vram[oam_index].wrapping_sub(9);
@@ -142,6 +146,7 @@ fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
             let tile_num = vram[usize::from(oam_index + 2)] as u16;
             let attributes = vram[usize::from(oam_index + 3)];
             let y_flip = attributes.get_bit(6);
+            let x_flip = attributes.get_bit(5);
             let palette = attributes.get_bit(4) as u8;
             let obp = create_bgp_data(vram.get_obp(palette));
             let tile_address = locations::SPRITE_PATTERN_TABLE + tile_num * 16;
@@ -157,10 +162,19 @@ fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
 
             let pixels = vram.get_u16(line_address as usize);
             for (i, pixel) in PixelIterator::new(pixels).enumerate() {
-                let index = usize::from(x) + i;
+                let index = if x_flip {
+                    usize::from(x) + 7 - i
+                } else {
+                    usize::from(x) + i
+                };
+
                 if index < line.len() {
                     if pixel > 0 {
-                        line[index] = obp[pixel as usize];
+                        if x_flip {
+                            line[index] = obp[pixel as usize];
+                        } else {
+                            line[index] = obp[pixel as usize];
+                        }
                     }
                 }
             }
