@@ -108,8 +108,9 @@ fn draw_bg(vram: &VideoMemory, line: &mut [u8; 160]) {
         let tile_data_start = vram.get_tile_data_select();
         let tile_address = match tile_data_start {
             locations::TILE_DATA_1 => {
-                let x = tile_data_index as i16 * 16;
-                let x = (x + (128 * 16)) as u16;
+                let x = (tile_data_index as i8) as i16;
+                assert!(x >= -128 && x <= 127, "x = {}", x);
+                let x = ((x + 128) * 16) as u16;
                 tile_data_start + x
             }
             locations::TILE_DATA_2 => {
