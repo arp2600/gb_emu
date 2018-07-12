@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+mod warn_macros;
 mod bit_ops;
 mod cartridge;
 mod cpu;

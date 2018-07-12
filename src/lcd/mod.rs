@@ -5,20 +5,6 @@ use self::pixel_iterator::PixelIterator;
 use super::bit_ops::BitGetSet;
 use memory::{locations, VideoMemory};
 
-// this will only print once
-// useful for not spamming duplicate warnings
-macro_rules! eprintln_once {
-    ($($args:tt)*) => {
-        unsafe {
-            static mut PRINTED: bool = false;
-            if !PRINTED {
-                eprintln!($($args)*);
-                PRINTED = true;
-            }
-        }
-    };
-}
-
 pub struct LCD {
     update_time: u64,
     enabled: bool,
