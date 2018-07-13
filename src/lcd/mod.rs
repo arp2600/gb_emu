@@ -112,7 +112,7 @@ fn draw_windows(vram: &VideoMemory, line: &mut [u8; 160]) {
 
     // Look at each tile on the current line
     for x in 0..(256 / 8) {
-        let y = u16::from(ly.wrapping_add(vram.regs.wy) / 8);
+        let y = u16::from((ly - vram.regs.wy) / 8);
 
         // Get the index of the tile data
         let tile_data_index = get_window_tile_index(x, y, vram);
