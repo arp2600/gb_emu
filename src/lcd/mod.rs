@@ -96,8 +96,9 @@ fn draw_bg(vram: &VideoMemory, line: &mut [u8; 160]) {
     let bgp = create_bgp_data(vram.regs.bgp);
 
     // Look at each tile on the current line
-    for x in 0..(160 / 8) {
+    for x in 0..(256 / 8) {
         let scy = vram.regs.scy;
+        let scx = vram.regs.scx;
         let ly_scy = ly.wrapping_add(scy);
         let y = u16::from(ly_scy / 8);
 
@@ -121,8 +122,14 @@ fn draw_bg(vram: &VideoMemory, line: &mut [u8; 160]) {
 
         let pixels = vram.get_u16(line_address as usize);
         for (i, pixel) in PixelIterator::new(pixels).enumerate() {
-            let line_index = usize::from(x * 8) + i;
-            line[line_index] = bgp[pixel as usize];
+            let line_index = {
+                let t = (x as u8 * 8) + i as u8;
+                t.wrapping_sub(scx) as usize
+            };
+
+            if line_index < line.len() {
+                line[line_index] = bgp[pixel as usize];
+            }
         }
     }
 }
