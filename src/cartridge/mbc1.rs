@@ -1,5 +1,6 @@
 use super::{Cartridge, ROM_BANK_SIZE};
 use memory::locations::*;
+use memory::sizes;
 
 enum RomRamMode {
     RomBankingMode,
@@ -13,6 +14,7 @@ pub struct Mbc1 {
     ram_enabled: bool,
     ram_bank_index: usize,
     rom_ram_mode: RomRamMode,
+    ram_banks: Vec<Vec<u8>>,
 }
 
 impl Mbc1 {
@@ -27,6 +29,14 @@ impl Mbc1 {
             other_rom_banks.push(bank.to_vec());
         }
 
+        let ram_banks = {
+            let mut x = Vec::new();
+            for _ in 0..4 {
+                x.push(vec![0; sizes::EXRAM]);
+            }
+            x
+        };
+
         Mbc1 {
             rom_bank_zero,
             other_rom_banks,
@@ -34,6 +44,7 @@ impl Mbc1 {
             ram_enabled: false,
             ram_bank_index: 0,
             rom_ram_mode: RomRamMode::RomBankingMode,
+            ram_banks,
         }
     }
 }
@@ -48,13 +59,20 @@ impl Cartridge for Mbc1 {
                 assert!(index - ROM_BANK_SIZE < bank.len());
                 bank[index - ROM_BANK_SIZE]
             }
-            _ => unimplemented!(),
+            EXRAM_START...EXRAM_END => {
+                let bank = &self.ram_banks[self.ram_bank_index];
+                bank[index - EXRAM_START]
+            }
+            _ => unreachable!(),
         }
     }
 
     fn set_u8(&mut self, index: usize, value: u8) {
         match index {
-            EXRAM_START...EXRAM_END => unimplemented!(),
+            EXRAM_START...EXRAM_END => {
+                let bank = &mut self.ram_banks[self.ram_bank_index];
+                bank[index - EXRAM_START] = value;
+            }
             0x0000...0x1fff => match value & 0x0f {
                 0x0a => self.ram_enabled = true,
                 _ => self.ram_enabled = false,

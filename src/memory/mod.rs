@@ -1,7 +1,7 @@
 pub mod io_regs;
 pub mod joypad;
 pub mod locations;
-mod sizes;
+pub mod sizes;
 mod video_memory;
 pub use self::joypad::JoyPad;
 pub use self::video_memory::VideoMemory;
