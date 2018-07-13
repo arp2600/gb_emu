@@ -1,4 +1,4 @@
-use super::{locations, sizes};
+use super::{locations::*, sizes};
 use bit_ops::BitGetSet;
 use std::default::Default;
 use std::ops::{Index, IndexMut};
@@ -35,29 +35,25 @@ impl VideoMemory {
 
     pub fn get_u16(&self, index: usize) -> u16 {
         match index {
-            locations::VRAM_START...locations::VRAM_END => {
-                get_u16(&self.vram, index - locations::VRAM_START)
-            }
-            locations::OAM_START...locations::OAM_END => {
-                get_u16(&self.oam, index - locations::OAM_START)
-            }
+            VRAM_START...VRAM_END => get_u16(&self.vram, index - VRAM_START),
+            OAM_START...OAM_END => get_u16(&self.oam, index - OAM_START),
             _ => panic!("Invalid index for VideoMemory"),
         }
     }
 
     pub fn get_bg_tilemap_display_select(&self) -> u16 {
         if self.regs.lcdc.get_bit(3) {
-            locations::TILE_MAP_2
+            TILE_MAP_2
         } else {
-            locations::TILE_MAP_1
+            TILE_MAP_1
         }
     }
 
     pub fn get_tile_data_select(&self) -> u16 {
         if self.regs.lcdc.get_bit(4) {
-            locations::TILE_DATA_2
+            TILE_DATA_2
         } else {
-            locations::TILE_DATA_1
+            TILE_DATA_1
         }
     }
 
@@ -103,10 +99,8 @@ impl Index<usize> for VideoMemory {
 
     fn index(&self, index: usize) -> &u8 {
         match index {
-            locations::VRAM_START...locations::VRAM_END => {
-                &self.vram[index - locations::VRAM_START]
-            }
-            locations::OAM_START...locations::OAM_END => &self.oam[index - locations::OAM_START],
+            VRAM_START...VRAM_END => &self.vram[index - VRAM_START],
+            OAM_START...OAM_END => &self.oam[index - OAM_START],
             _ => panic!("Invalid index for VideoMemory"),
         }
     }
@@ -115,12 +109,8 @@ impl Index<usize> for VideoMemory {
 impl IndexMut<usize> for VideoMemory {
     fn index_mut(&mut self, index: usize) -> &mut u8 {
         match index {
-            locations::VRAM_START...locations::VRAM_END => {
-                &mut self.vram[index - locations::VRAM_START]
-            }
-            locations::OAM_START...locations::OAM_END => {
-                &mut self.oam[index - locations::OAM_START]
-            }
+            VRAM_START...VRAM_END => &mut self.vram[index - VRAM_START],
+            OAM_START...OAM_END => &mut self.oam[index - OAM_START],
             _ => panic!("Invalid index for VideoMemory"),
         }
     }
