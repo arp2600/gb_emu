@@ -11,6 +11,7 @@ pub struct VideoRegisters {
     pub stat: u8,
     pub scy: u8,
     pub scx: u8,
+    pub wy: u8,
     pub bgp: u8,
     pub obp0: u8,
     pub obp1: u8,
@@ -50,6 +51,14 @@ impl VideoMemory {
         }
     }
 
+    pub fn get_window_tilemap_display_select(&self) -> u16 {
+        if self.regs.lcdc.get_bit(6) {
+            TILE_MAP_2
+        } else {
+            TILE_MAP_1
+        }
+    }
+
     pub fn get_tile_data_select(&self) -> u16 {
         if self.regs.lcdc.get_bit(4) {
             TILE_DATA_2
@@ -60,6 +69,10 @@ impl VideoMemory {
 
     pub fn are_sprites_enabled(&self) -> bool {
         self.regs.lcdc.get_bit(1)
+    }
+
+    pub fn is_window_enabled(&self) -> bool {
+        self.regs.lcdc.get_bit(5)
     }
 
     pub fn get_obp(&self, num: u8) -> u8 {

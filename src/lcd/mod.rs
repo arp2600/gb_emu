@@ -91,6 +91,59 @@ fn get_bg_tile_index(x: u16, y: u16, vram: &VideoMemory) -> u16 {
     u16::from(vram[i as usize])
 }
 
+fn get_window_tile_index(x: u16, y: u16, vram: &VideoMemory) -> u16 {
+    let tile_map = vram.get_window_tilemap_display_select();
+    let i = tile_map + x + 32 * y;
+    u16::from(vram[i as usize])
+}
+
+fn draw_windows(vram: &VideoMemory, line: &mut [u8; 160]) {
+    if !vram.is_window_enabled() {
+        return;
+    }
+    if vram.regs.ly < vram.regs.wy {
+        return;
+    }
+
+    let ly = vram.regs.ly;
+    let bgp = create_bgp_data(vram.regs.bgp);
+
+    // Look at each tile on the current line
+    for x in 0..(256 / 8) {
+        let y = u16::from(ly.wrapping_add(vram.regs.wy) / 8);
+
+        // Get the index of the tile data
+        let tile_data_index = get_window_tile_index(x, y, vram);
+
+        // Get the address of the tile
+        let tile_data_start = vram.get_tile_data_select();
+        let tile_address = match tile_data_start {
+            TILE_DATA_1 => {
+                let x = (tile_data_index as i8) as i16;
+                assert!(x >= -128 && x <= 127, "x = {}", x);
+                let x = ((x + 128) * 16) as u16;
+                tile_data_start + x
+            }
+            TILE_DATA_2 => tile_data_start + tile_data_index * 16,
+            _ => unreachable!(),
+        };
+        let tile_y_index = u16::from(ly % 8);
+        let line_address = tile_address + tile_y_index * 2;
+
+        let pixels = vram.get_u16(line_address as usize);
+        for (i, pixel) in PixelIterator::new(pixels).enumerate() {
+            let line_index = {
+                let t = (x as u8 * 8) + i as u8;
+                t as usize
+            };
+
+            if line_index < line.len() {
+                line[line_index] = bgp[pixel as usize];
+            }
+        }
+    }
+}
+
 fn draw_bg(vram: &VideoMemory, line: &mut [u8; 160]) {
     let ly = vram.regs.ly;
     let bgp = create_bgp_data(vram.regs.bgp);
@@ -201,6 +254,7 @@ where
 
     draw_bg(vram, &mut line);
     draw_sprites(vram, &mut line);
+    draw_windows(vram, &mut line);
 
     let ly = vram.regs.ly;
     draw_fn(&line, ly);
