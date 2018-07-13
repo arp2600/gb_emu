@@ -45,6 +45,8 @@ impl LCD {
             self.mode_updater.init(cycles);
             self.next_ly = 0;
             vram.regs.ly = 0;
+        } else if !enabled && self.enabled {
+            self.enabled = false;
         }
 
         if self.enabled && cycles >= self.update_time {
