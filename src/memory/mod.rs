@@ -112,9 +112,6 @@ impl Memory {
             io_regs::STAT => {
                 let stat = self.vram.regs.stat;
                 let new_stat = (stat & 0b0111) | (value & 0b0111_1000);
-                if new_stat.get_bit(6) {
-                    eprintln_once!("warning: LYC=LY interrupt not implemented");
-                }
                 if new_stat.get_bit(5) {
                     eprintln_once!("warning: OAM interrupt not implemented");
                 }
@@ -175,7 +172,7 @@ impl Memory {
             INTERRUPT_ENABLE_REG => {
                 self.interrupt_enable_register = value;
                 if value.get_bit(1) {
-                    eprintln_once!("warning: Lcd STAT interrupt not implemented");
+                    eprintln_once!("warning: Lcd STAT interrupt only partially implemented");
                 } else if value.get_bit(3) {
                     eprintln_once!("warning: Serial interrupt not implemented");
                 } else if value.get_bit(4) {
