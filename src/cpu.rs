@@ -14,6 +14,7 @@ enum HaltState {
 #[derive(Clone, Copy)]
 enum Interrupt {
     VBlank,
+    Stat,
     Timer,
 }
 
@@ -21,6 +22,7 @@ impl Interrupt {
     fn get_address(&self) -> u16 {
         match self {
             Interrupt::VBlank => 0x40,
+            Interrupt::Stat => 0x48,
             Interrupt::Timer => 0x50,
         }
     }
@@ -29,6 +31,7 @@ impl Interrupt {
         let flag = memory.get_io(io_regs::IF);
         let new_flag = match self {
             Interrupt::VBlank => flag.reset_bit(0),
+            Interrupt::Stat => flag.reset_bit(1),
             Interrupt::Timer => flag.reset_bit(2),
         };
         memory.set_io(io_regs::IF, new_flag);
@@ -60,6 +63,8 @@ impl Cpu {
         let interrupts = interrupt_request & interrupt_enable;
         if interrupts.get_bit(0) {
             self.try_interrupt(Interrupt::VBlank, memory);
+        } else if interrupts.get_bit(1) {
+            self.try_interrupt(Interrupt::Stat, memory);
         } else if interrupts.get_bit(2) {
             self.try_interrupt(Interrupt::Timer, memory);
         }

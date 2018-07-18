@@ -84,6 +84,9 @@ impl Memory {
                 if self.vram.regs.vblank_interrupt_enabled {
                     x = x.set_bit(0);
                 }
+                if self.vram.regs.stat_interrupt_enabled {
+                    x = x.set_bit(1);
+                }
                 x
             }
             io_regs::DIV | io_regs::TIMA | io_regs::TMA | io_regs::TAC => self.io[index - IO_START],
@@ -134,7 +137,8 @@ impl Memory {
             io_regs::OBP1 => self.vram.regs.obp1 = value,
             io_regs::IF => {
                 self.interrupt_flag = value & 0b1111_1110;
-                self.vram.regs.vblank_interrupt_enabled = (value & 1) != 0;
+                self.vram.regs.vblank_interrupt_enabled = value.get_bit(0);
+                self.vram.regs.stat_interrupt_enabled = value.get_bit(1);
             }
             io_regs::DIV | io_regs::TIMA | io_regs::TMA | io_regs::TAC => {
                 self.io[index - IO_START] = value;

@@ -16,6 +16,7 @@ pub struct VideoRegisters {
     pub obp0: u8,
     pub obp1: u8,
     pub vblank_interrupt_enabled: bool,
+    pub stat_interrupt_enabled: bool,
 }
 
 pub struct VideoMemory {
@@ -105,6 +106,10 @@ impl VideoMemory {
         } else {
             self.regs.stat = self.regs.stat.reset_bit(2);
         }
+    }
+
+    pub fn is_lyc_check_enabled(&self) -> bool {
+        self.regs.stat.get_bit(6)
     }
 }
 

@@ -67,6 +67,9 @@ impl LCD {
             let lyc = vram.regs.lyc;
 
             vram.set_coincidence_flag(ly == lyc);
+            if vram.is_lyc_check_enabled() {
+                vram.regs.stat_interrupt_enabled = ly == lyc;
+            }
 
             vram.regs.ly = self.next_ly;
             self.next_ly = self.next_ly.wrapping_add(1) % 154;
