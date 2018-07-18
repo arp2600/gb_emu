@@ -109,6 +109,18 @@ impl Memory {
             io_regs::STAT => {
                 let stat = self.vram.regs.stat;
                 let new_stat = (stat & 0b0111) | (value & 0b0111_1000);
+                if new_stat.get_bit(6) {
+                    eprintln_once!("warning: LYC=LY interrupt not implemented");
+                }
+                if new_stat.get_bit(5) {
+                    eprintln_once!("warning: OAM interrupt not implemented");
+                }
+                if new_stat.get_bit(4) {
+                    eprintln_once!("warning: v-blank interrupt not implemented");
+                }
+                if new_stat.get_bit(3) {
+                    eprintln_once!("warning: h-blank interrupt not implemented");
+                }
                 self.vram.regs.stat = new_stat;
             }
             io_regs::LCDC => self.vram.regs.lcdc = value,
