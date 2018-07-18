@@ -43,6 +43,15 @@ pub const NR30: usize = 0xff1a;
 pub const NR11: usize = 0xff11;
 pub const NR13: usize = 0xff13;
 pub const NR21: usize = 0xff16;
+pub const NR23: usize = 0xff18;
+pub const WAVE_PATTERN_RAM_START: usize = 0xff30;
+pub const WAVE_PATTERN_RAM_END: usize = 0xff3f;
+pub const NR31: usize = 0xff1b;
+pub const NR32: usize = 0xff1c;
+pub const NR33: usize = 0xff1d;
+pub const NR34: usize = 0xff1e;
+pub const NR41: usize = 0xff20;
+pub const NR43: usize = 0xff22;
 
 pub fn io_reg_description(index: usize) -> String {
     match index {
@@ -64,6 +73,14 @@ pub fn io_reg_description(index: usize) -> String {
         NR11 => format!("NR11 - Channel 1 Sound length/Wave pattern duty"),
         NR13 => format!("NR13 - Channel 1 Frequency lo"),
         NR21 => format!("NR21 - Channel 2 Sound Length/Wave Pattern Duty"),
+        NR23 => format!("NR23 - Channel 2 Frequency lo data"),
+        WAVE_PATTERN_RAM_START...WAVE_PATTERN_RAM_END => format!("Wave Pattern RAM"),
+        NR31 => format!("NR31 - Channel 3 Sound Length"),
+        NR32 => format!("NR32 - Channel 3 Select output level"),
+        NR33 => format!("NR33 - Channel 3 Frequency's lower data"),
+        NR34 => format!("NR34 - Channel 3 Frequency's higher data"),
+        NR41 => format!("NR41 - Channel 4 Sound Length"),
+        NR43 => format!("NR43 - Channel 4 Polynomial Counter"),
         _ => format!("{:#06x}", index),
     }
 }
