@@ -42,3 +42,28 @@ pub const NR10: usize = 0xff10;
 pub const NR30: usize = 0xff1a;
 pub const NR11: usize = 0xff11;
 pub const NR13: usize = 0xff13;
+pub const NR21: usize = 0xff16;
+
+pub fn io_reg_description(index: usize) -> String {
+    match index {
+        SCX => format!("SCX - Scroll X"),
+        SC => format!("SC - Serial Transfer Control"),
+        NR52 => format!("NR52 - Sound on/off"),
+        NR51 => format!("NR51 - Selection of Sound output terminal"),
+        NR50 => format!("NR50 - Channel control / ON-OFF / Volume"),
+        NR12 => format!("NR12 - Channel 1 Volume Envelope"),
+        NR22 => format!("NR22 - Channel 2 Volume Envelope"),
+        NR42 => format!("NR42 - Channel 4 Volume Envelope"),
+        NR14 => format!("NR14 - Channel 1 Frequency hi"),
+        NR24 => format!("NR24 - Channel 2 Frequency hi data"),
+        NR44 => format!("NR44 - Channel 4 Counter/consecutive; Inital"),
+        NR10 => format!("NR10 - Channel 1 Sweep register"),
+        NR30 => format!("NR30 - Channel 3 Sound on/off"),
+        WY => format!("WY - Window Y Position"),
+        WX => format!("WX - Window X Position minus 7"),
+        NR11 => format!("NR11 - Channel 1 Sound length/Wave pattern duty"),
+        NR13 => format!("NR13 - Channel 1 Frequency lo"),
+        NR21 => format!("NR21 - Channel 2 Sound Length/Wave Pattern Duty"),
+        _ => format!("{:#06x}", index),
+    }
+}

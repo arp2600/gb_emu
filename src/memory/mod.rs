@@ -92,7 +92,7 @@ impl Memory {
                     index,
                     usize,
                     "warning: reading from placeholder io {}",
-                    io_reg_name(index)
+                    io_regs::io_reg_description(index)
                 );
                 self.io[index - IO_START]
             }
@@ -133,7 +133,7 @@ impl Memory {
                     usize,
                     "warning: writing {:#04x} to placeholder io {}",
                     value,
-                    io_reg_name(index)
+                    io_regs::io_reg_description(index)
                 );
                 self.io[index - IO_START] = value;
             }
@@ -210,28 +210,5 @@ pub fn index_to_location(index: usize) -> String {
         HRAM_START...HRAM_END => format!("HRAM[0x{:x}]", index),
         INTERRUPT_ENABLE_REG => String::from("InterruptEnableRegister"),
         _ => panic!("Bad index 0x{:x}", index),
-    }
-}
-
-fn io_reg_name(index: usize) -> String {
-    match index {
-        io_regs::SCX => format!("SCX - Scroll X"),
-        io_regs::SC => format!("SC - Serial Transfer Control"),
-        io_regs::NR52 => format!("NR52 - Sound on/off"),
-        io_regs::NR51 => format!("NR51 - Selection of Sound output terminal"),
-        io_regs::NR50 => format!("NR50 - Channel control / ON-OFF / Volume"),
-        io_regs::NR12 => format!("NR12 - Channel 1 Volume Envelope"),
-        io_regs::NR22 => format!("NR22 - Channel 2 Volume Envelope"),
-        io_regs::NR42 => format!("NR42 - Channel 4 Volume Envelope"),
-        io_regs::NR14 => format!("NR14 - Channel 1 Frequency hi"),
-        io_regs::NR24 => format!("NR24 - Channel 2 Frequency hi data"),
-        io_regs::NR44 => format!("NR44 - Channel 4 Counter/consecutive; Inital"),
-        io_regs::NR10 => format!("NR10 - Channel 1 Sweep register"),
-        io_regs::NR30 => format!("NR30 - Channel 3 Sound on/off"),
-        io_regs::WY => format!("WY - Window Y Position"),
-        io_regs::WX => format!("WX - Window X Position minus 7"),
-        io_regs::NR11 => format!("NR11 - Channel 1 Sound length/Wave pattern duty"),
-        io_regs::NR13 => format!("NR13 - Channel 1 Frequency lo"),
-        _ => format!("{:#06x}", index),
     }
 }
