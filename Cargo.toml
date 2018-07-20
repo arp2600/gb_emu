@@ -5,3 +5,6 @@ authors = ["George Roger <georger@xmos.com>"]
 
 [dependencies]
 lazy_static = "1.0.1"
+
+[dev-dependencies]
+png_encode_mini = "0.1.2"

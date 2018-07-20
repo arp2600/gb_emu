@@ -1,6 +1,10 @@
+// extern crate png_encode_mini;
 use super::LCD;
 use cartridge::Cartridge;
-use memory::{io_regs, Memory};
+use memory::locations::*;
+use memory::{io_regs, Memory, VideoMemory};
+// use self::png_encode_mini::write_rgba_from_u8;
+// use std::fs::File;
 
 // Check lcd against old algorithm for calculating ly register
 #[test]
@@ -130,3 +134,62 @@ fn test_stat_mode_frame(lcd: &mut LCD, memory: &mut Memory, frame_num: u64) {
         }
     }
 }
+
+#[test]
+fn bg_checker_pattern() {
+    let mut vmem = VideoMemory::test_new();
+    vmem.regs.lcdc = 0b1001_0000;
+    vmem.regs.bgp = 0b00_01_10_11;
+
+    color_tile(TILE_DATA_2, 0, 0, &mut vmem);
+    color_tile(TILE_DATA_2, 1, 3, &mut vmem);
+
+    for i in 0..1024 {
+        vmem[TILE_MAP_1 as usize + i] = (((i % 2) + (i / 32)) % 2) as u8;
+    }
+
+    let mut lcd = LCD::new();
+
+    let mut buffer = [0; 160 * 144];
+
+    // Run 1 frame
+    for cycles in 0..70224 {
+        lcd.tick(&mut vmem, cycles, |line, line_index| {
+            for (i, v) in line.iter().enumerate() {
+                buffer[usize::from(line_index) * 160 + i] = *v;
+            }
+        });
+    }
+
+    for (i, actual_value) in buffer.iter().enumerate() {
+        let ii: usize = i / 8;
+        let desired_value = (((ii % 2) + (ii / 160)) % 2) as u8;
+        assert_eq!(desired_value * 3, *actual_value, "i is {}", i);
+    }
+}
+
+fn color_tile(data_start: u16, index: usize, value: u8, vmem: &mut VideoMemory) {
+    assert!(value < 4);
+    let data_start = data_start as usize + index * 16;
+    for i in 0..8 {
+        vmem[data_start + i * 2] = if value & 0b01 != 0 { 0xff } else { 0 };
+
+        vmem[data_start + i * 2 + 1] = if value & 0b10 != 0 { 0xff } else { 0 };
+    }
+}
+
+// fn write_png(fname: &str, buffer: &[u8; 160*144]) {
+//     let mut rgba_buffer = [0; 160*144*4];
+//
+//     for (i, v) in buffer.iter().enumerate() {
+//         let v = *v * 85;
+//         rgba_buffer[i * 4] = v;
+//         rgba_buffer[i * 4 + 1] = v;
+//         rgba_buffer[i * 4 + 2] = v;
+//         rgba_buffer[i * 4 + 3] = 255;
+//     }
+//
+//     let mut file = File::create(fname).unwrap();
+//     write_rgba_from_u8(&mut file, &rgba_buffer, 160, 144).unwrap();
+//     println!("saved image {}", fname);
+// }

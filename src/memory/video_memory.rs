@@ -37,6 +37,11 @@ impl VideoMemory {
         }
     }
 
+    #[cfg(test)]
+    pub fn test_new() -> VideoMemory {
+        VideoMemory::new()
+    }
+
     pub fn get_u16(&self, index: usize) -> u16 {
         match index {
             VRAM_START...VRAM_END => get_u16(&self.vram, index - VRAM_START),
