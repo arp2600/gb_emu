@@ -197,16 +197,20 @@ fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
         return;
     }
 
-    if vram.get_sprite_width() == 16 {
-        panic!("Sprite width of 16 is unsupported");
-    }
-
     for i in 0..40 {
+        let sprite_height = vram.get_sprite_width();
         let oam_index = usize::from(SPRITE_ATTRIBUTE_TABLE + i * 4);
-        let y = vram[oam_index].wrapping_sub(9);
+        let y = vram[oam_index];
         let x = vram[oam_index + 1].wrapping_sub(8);
-        if y >= vram.regs.ly && y < (vram.regs.ly + 8) {
-            let tile_num = vram[usize::from(oam_index + 2)] as u16;
+        if y >= vram.regs.ly && y < (vram.regs.ly + sprite_height) {
+            let tile_num = {
+                let x = vram[usize::from(oam_index + 2)] as u16;
+                if vram.get_sprite_width() == 16 {
+                    x & 0b11111110
+                } else {
+                    x
+                }
+            };
             let attributes = vram[usize::from(oam_index + 3)];
 
             if attributes.get_bit(7) {
@@ -224,7 +228,7 @@ fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
                 if y_flip {
                     y
                 } else {
-                    7 - y
+                    u16::from(sprite_height) - 1 - y
                 }
             };
             let line_address = tile_address + tile_y_index * 2;
