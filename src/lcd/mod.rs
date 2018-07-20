@@ -139,7 +139,8 @@ fn draw_windows(vram: &VideoMemory, line: &mut [u8; 160]) {
         for (i, pixel) in PixelIterator::new(pixels).enumerate() {
             let line_index = {
                 let t = (x as u8 * 8) + i as u8;
-                t as usize
+                let wx = vram.regs.wx.wrapping_sub(7) as usize;
+                t as usize + wx
             };
 
             if line_index < line.len() {

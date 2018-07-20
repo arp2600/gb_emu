@@ -12,6 +12,7 @@ pub struct VideoRegisters {
     pub scy: u8,
     pub scx: u8,
     pub wy: u8,
+    pub wx: u8,
     pub bgp: u8,
     pub obp0: u8,
     pub obp1: u8,
