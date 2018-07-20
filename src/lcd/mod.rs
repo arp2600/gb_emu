@@ -81,12 +81,20 @@ impl LCD {
     }
 }
 
-fn create_bgp_data(bgp_value: u8) -> [u8; 4] {
+fn create_combined_palette(bgp: u8, obp1: u8, obp2: u8) -> [u8; 12] {
     [
-        3 - (bgp_value & 0b11),
-        3 - ((bgp_value >> 2) & 0b11),
-        3 - ((bgp_value >> 4) & 0b11),
-        3 - ((bgp_value >> 6) & 0b11),
+        3 - (bgp & 0b11),
+        3 - ((bgp >> 2) & 0b11),
+        3 - ((bgp >> 4) & 0b11),
+        3 - ((bgp >> 6) & 0b11),
+        3 - (obp1 & 0b11),
+        3 - ((obp1 >> 2) & 0b11),
+        3 - ((obp1 >> 4) & 0b11),
+        3 - ((obp1 >> 6) & 0b11),
+        3 - (obp2 & 0b11),
+        3 - ((obp2 >> 2) & 0b11),
+        3 - ((obp2 >> 4) & 0b11),
+        3 - ((obp2 >> 6) & 0b11),
     ]
 }
 
@@ -111,7 +119,6 @@ fn draw_windows(vram: &VideoMemory, line: &mut [u8; 160]) {
     }
 
     let ly = vram.regs.ly;
-    let bgp = create_bgp_data(vram.regs.bgp);
 
     // Look at each tile on the current line
     for x in 0..(256 / 8) {
@@ -144,7 +151,7 @@ fn draw_windows(vram: &VideoMemory, line: &mut [u8; 160]) {
             };
 
             if line_index < line.len() {
-                line[line_index] = bgp[pixel as usize];
+                line[line_index] = pixel;
             }
         }
     }
@@ -152,7 +159,6 @@ fn draw_windows(vram: &VideoMemory, line: &mut [u8; 160]) {
 
 fn draw_bg(vram: &VideoMemory, line: &mut [u8; 160]) {
     let ly = vram.regs.ly;
-    let bgp = create_bgp_data(vram.regs.bgp);
 
     // Look at each tile on the current line
     for x in 0..(256 / 8) {
@@ -187,7 +193,7 @@ fn draw_bg(vram: &VideoMemory, line: &mut [u8; 160]) {
             };
 
             if line_index < line.len() {
-                line[line_index] = bgp[pixel as usize];
+                line[line_index] = pixel;
             }
         }
     }
@@ -218,15 +224,9 @@ fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
             };
             let attributes = vram[usize::from(oam_index + 3)];
 
-            if attributes.get_bit(7) {
-                eprintln_once!("warning: using placeholder implementation of sprite bg priority");
-                continue;
-            }
-
             let y_flip = attributes.get_bit(6);
             let x_flip = attributes.get_bit(5);
             let palette = attributes.get_bit(4) as u8;
-            let obp = create_bgp_data(vram.get_obp(palette));
             let tile_address = SPRITE_PATTERN_TABLE + tile_num * 16;
             let tile_y_index = {
                 let y = u16::from(y - vram.regs.ly);
@@ -239,6 +239,8 @@ fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
             let line_address = tile_address + tile_y_index * 2;
 
             let pixels = vram.get_u16(line_address as usize);
+            let bg_priority = attributes.get_bit(7);
+
             for (i, pixel) in PixelIterator::new(pixels).enumerate() {
                 let index = if x_flip {
                     usize::from(x) + 7 - i
@@ -248,7 +250,11 @@ fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
 
                 if index < line.len() {
                     if pixel > 0 {
-                        let pixel = obp[pixel as usize];
+                        let pixel = pixel + 4 + 4 * palette;
+
+                        if bg_priority && line[index] > 0 {
+                            continue;
+                        }
 
                         if x_flip {
                             line[index] = pixel;
@@ -269,8 +275,16 @@ where
     let mut line = [0; 160];
 
     draw_bg(vram, &mut line);
-    draw_sprites(vram, &mut line);
     draw_windows(vram, &mut line);
+    draw_sprites(vram, &mut line);
+
+    let bgp = vram.regs.bgp;
+    let obp1 = vram.get_obp(0);
+    let obp2 = vram.get_obp(2);
+    let palette = create_combined_palette(bgp, obp1, obp2);
+    for x in line.iter_mut() {
+        *x = palette[*x as usize];
+    }
 
     let ly = vram.regs.ly;
     draw_fn(&line, ly);
