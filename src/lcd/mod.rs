@@ -200,7 +200,11 @@ fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
     for i in 0..40 {
         let sprite_height = vram.get_sprite_width();
         let oam_index = usize::from(SPRITE_ATTRIBUTE_TABLE + i * 4);
-        let y = vram[oam_index];
+        let y = if sprite_height == 16 {
+            vram[oam_index]
+        } else {
+            vram[oam_index].wrapping_sub(9)
+        };
         let x = vram[oam_index + 1].wrapping_sub(8);
         if y >= vram.regs.ly && y < (vram.regs.ly + sprite_height) {
             let tile_num = {
@@ -243,10 +247,12 @@ fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
 
                 if index < line.len() {
                     if pixel > 0 {
+                        let pixel = obp[pixel as usize];
+
                         if x_flip {
-                            line[index] = obp[pixel as usize];
+                            line[index] = pixel;
                         } else {
-                            line[index] = obp[pixel as usize];
+                            line[index] = pixel;
                         }
                     }
                 }
