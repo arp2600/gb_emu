@@ -216,6 +216,14 @@ fn rockybullwinkle_render() {
     );
 }
 
+#[test]
+fn supermarioland_render() {
+    test_vmem_dump(
+        "test_data/supermarioland.vmem_dump",
+        "test_data/supermarioland.data",
+    );
+}
+
 fn test_vmem_dump(vmem_dump_path: &str, test_data_path: &str) {
     let mut vmem: VideoMemory = {
         let mut file = File::open(vmem_dump_path).unwrap();
