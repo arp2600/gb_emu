@@ -205,8 +205,20 @@ fn bg_checker_pattern_scx() {
 
 #[test]
 fn tetris_render() {
+    test_vmem_dump("test_data/tetris.vmem_dump", "test_data/tetris.data");
+}
+
+#[test]
+fn rockybullwinkle_render() {
+    test_vmem_dump(
+        "test_data/rockybullwinkle.vmem_dump",
+        "test_data/rockybullwinkle.data",
+    );
+}
+
+fn test_vmem_dump(vmem_dump_path: &str, test_data_path: &str) {
     let mut vmem: VideoMemory = {
-        let mut file = File::open("test_data/tetris.vmem_dump").unwrap();
+        let mut file = File::open(vmem_dump_path).unwrap();
         serde_json::from_reader(&file).unwrap()
     };
 
@@ -223,10 +235,10 @@ fn tetris_render() {
         });
     }
 
-    let test_file = "test_data/tetris.data";
-    // write_png("test.png", &buffer);
-    test_against(test_file, &buffer);
-    // dump_test_file(test_file, &buffer);
+    let png_path = format!("{}.png", test_data_path);
+    // write_png(&png_path, &buffer);
+    // dump_test_file(test_data_path, &buffer);
+    test_against(test_data_path, &buffer);
 }
 
 fn color_tile(data_start: u16, index: usize, value: u8, vmem: &mut VideoMemory) {
