@@ -3,7 +3,7 @@ use bit_ops::BitGetSet;
 use std::default::Default;
 use std::ops::{Index, IndexMut};
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct VideoRegisters {
     pub lcdc: u8,
     pub ly: u8,
@@ -20,16 +20,17 @@ pub struct VideoRegisters {
     pub stat_interrupt_enabled: bool,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct VideoMemory {
-    vram: [u8; sizes::VRAM],
-    oam: [u8; sizes::OAM],
+    vram: Vec<u8>,
+    oam: Vec<u8>,
     pub regs: VideoRegisters,
 }
 
 impl VideoMemory {
     pub(super) fn new() -> VideoMemory {
-        let vram = [0; sizes::VRAM];
-        let oam = [0; sizes::OAM];
+        let vram = vec![0; sizes::VRAM];
+        let oam = vec![0; sizes::OAM];
         VideoMemory {
             vram,
             oam,

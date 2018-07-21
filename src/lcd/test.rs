@@ -4,6 +4,7 @@ use super::LCD;
 use cartridge::Cartridge;
 use memory::locations::*;
 use memory::{io_regs, Memory, VideoMemory};
+use serde_json;
 use std::fs::File;
 use std::io::{Read, Write};
 
@@ -202,6 +203,32 @@ fn bg_checker_pattern_scx() {
     // dump_test_file(test_file, &buffer);
 }
 
+#[test]
+fn tetris_render() {
+    let mut vmem: VideoMemory = {
+        let mut file = File::open("test_data/tetris.vmem_dump").unwrap();
+        serde_json::from_reader(&file).unwrap()
+    };
+
+    let mut lcd = LCD::new();
+
+    let mut buffer = [0; 160 * 144];
+
+    // Run 1 frame
+    for cycles in 0..70224 {
+        lcd.tick(&mut vmem, cycles, |line, line_index| {
+            for (i, v) in line.iter().enumerate() {
+                buffer[usize::from(line_index) * 160 + i] = *v;
+            }
+        });
+    }
+
+    let test_file = "test_data/tetris.data";
+    // write_png("test.png", &buffer);
+    test_against(test_file, &buffer);
+    // dump_test_file(test_file, &buffer);
+}
+
 fn color_tile(data_start: u16, index: usize, value: u8, vmem: &mut VideoMemory) {
     assert!(value < 4);
     let data_start = data_start as usize + index * 16;
@@ -212,11 +239,18 @@ fn color_tile(data_start: u16, index: usize, value: u8, vmem: &mut VideoMemory) 
     }
 }
 
+#[allow(dead_code)]
 fn write_png(fname: &str, buffer: &[u8; 160 * 144]) {
     let mut rgba_buffer = [0; 160 * 144 * 4];
 
     for (i, v) in buffer.iter().enumerate() {
         let v = *v * 85;
+
+        // Flip coordinates vertically
+        let x = i - ((i / 160) * 160);
+        let y = 143 - i / 160;
+        let i = y * 160 + x;
+
         rgba_buffer[i * 4] = v;
         rgba_buffer[i * 4 + 1] = v;
         rgba_buffer[i * 4 + 2] = v;
@@ -228,6 +262,7 @@ fn write_png(fname: &str, buffer: &[u8; 160 * 144]) {
     println!("saved image {}", fname);
 }
 
+#[allow(dead_code)]
 fn dump_test_file(fname: &str, buffer: &[u8; 160 * 144]) {
     let mut file = File::create(fname).unwrap();
     file.write_all(buffer).unwrap();
