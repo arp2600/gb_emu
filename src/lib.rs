@@ -22,8 +22,12 @@ pub use memory::JoyPad;
 use memory::Memory;
 use registers::Registers;
 use std::fs;
-use std::ops::FnMut;
 use timer::Timer;
+
+pub trait App {
+    fn draw_line(&mut self, line_buffer: &[u8], line_index: u8);
+    fn update(&mut self, joypad: &mut JoyPad) -> Command;
+}
 
 pub enum Command {
     Continue,
@@ -61,31 +65,24 @@ impl Emulator {
         }
     }
 
-    pub fn run<F, G>(&mut self, mut draw_fn: F, mut update_fn: G)
-    where
-        F: FnMut(&[u8], u8),
-        G: FnMut(&mut JoyPad) -> Command,
-    {
+    pub fn run<T: App>(&mut self, app: &mut T) {
         loop {
             while !self.lcd.is_vblank() {
-                self.tick(&mut draw_fn);
+                self.tick(app);
             }
             self.lcd.reset_vblank();
             let joypad = self.memory.get_joypad();
-            match update_fn(joypad) {
+            match app.update(joypad) {
                 Command::Stop => break,
                 Command::Continue => (),
             }
         }
     }
 
-    pub fn tick<F>(&mut self, mut draw_fn: F)
-    where
-        F: FnMut(&[u8], u8),
-    {
+    pub fn tick<T: App>(&mut self, app: &mut T) {
         {
             let vram = self.memory.get_video_memory();
-            self.lcd.tick(vram, self.cpu.get_cycles(), &mut draw_fn);
+            self.lcd.tick(vram, self.cpu.get_cycles(), app);
         }
         self.cpu.tick(&mut self.memory, self.tracing);
         self.timer.tick(&mut self.memory, self.cpu.get_cycles());

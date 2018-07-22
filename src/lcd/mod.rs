@@ -3,6 +3,7 @@ mod pixel_iterator;
 use self::mode_updater::ModeUpdater;
 use self::pixel_iterator::PixelIterator;
 use super::bit_ops::BitGetSet;
+use super::App;
 use memory::{locations::*, VideoMemory};
 
 pub struct LCD {
@@ -34,10 +35,7 @@ impl LCD {
         self.vblank_flag = false;
     }
 
-    pub fn tick<F>(&mut self, vram: &mut VideoMemory, cycles: u64, mut draw_fn: F)
-    where
-        F: FnMut(&[u8], u8),
-    {
+    pub fn tick<T: App>(&mut self, vram: &mut VideoMemory, cycles: u64, app: &mut T) {
         let enabled = vram.check_enabled();
         if enabled && !self.enabled {
             self.enabled = true;
@@ -54,7 +52,7 @@ impl LCD {
 
             let ly = vram.regs.ly;
             if ly < 144 {
-                draw_line(vram, &mut draw_fn);
+                draw_line(vram, app);
             } else if ly == 144 {
                 self.vblank_flag = true;
             }
@@ -268,10 +266,7 @@ fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
     }
 }
 
-fn draw_line<F>(vram: &VideoMemory, mut draw_fn: F)
-where
-    F: FnMut(&[u8], u8),
-{
+fn draw_line<T: App>(vram: &VideoMemory, app: &mut T) {
     let mut line = [0; 160];
 
     draw_bg(vram, &mut line);
@@ -287,7 +282,7 @@ where
     }
 
     let ly = vram.regs.ly;
-    draw_fn(&line, ly);
+    app.draw_line(&line, ly);
 }
 
 #[cfg(test)]
