@@ -22,15 +22,12 @@ pub use memory::JoyPad;
 use memory::Memory;
 use registers::Registers;
 use std::fs;
-use std::fs::File;
-use std::io::Write;
 use std::ops::FnMut;
 use timer::Timer;
 
 pub enum Command {
     Continue,
     Stop,
-    DumpVMem,
 }
 
 pub struct Emulator {
@@ -74,22 +71,10 @@ impl Emulator {
                 self.tick(&mut draw_fn);
             }
             self.lcd.reset_vblank();
-            let mut dump_vmem = false;
-            {
-                let joypad = self.memory.get_joypad();
-                match update_fn(joypad) {
-                    Command::Stop => break,
-                    Command::Continue => (),
-                    Command::DumpVMem => dump_vmem = true,
-                }
-            }
-
-            if dump_vmem {
-                let vmem = self.memory.get_video_memory();
-                let serialized = serde_json::to_string(&vmem).unwrap();
-                let mut file = File::create("vmem_dump").unwrap();
-                write!(&mut file, "{}", serialized).unwrap();
-                println!("vmem written to vmem_dump");
+            let joypad = self.memory.get_joypad();
+            match update_fn(joypad) {
+                Command::Stop => break,
+                Command::Continue => (),
             }
         }
     }
