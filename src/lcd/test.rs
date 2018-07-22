@@ -229,6 +229,18 @@ fn ultima_render() {
     test_vmem_dump("test_data/ultima.vmem_dump", "test_data/ultima.data");
 }
 
+#[test]
+fn pokemon_render() {
+    test_vmem_dump(
+        "test_data/pokemonblue_outside.vmem_dump",
+        "test_data/pokemonblue_outside.data",
+    );
+    test_vmem_dump(
+        "test_data/pokemonblue_fight.vmem_dump",
+        "test_data/pokemonblue_fight.data",
+    );
+}
+
 fn test_vmem_dump(vmem_dump_path: &str, test_data_path: &str) {
     let mut vmem: VideoMemory = {
         let mut file = File::open(vmem_dump_path).unwrap();
