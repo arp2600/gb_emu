@@ -287,6 +287,7 @@ fn dump_test_file(fname: &str, buffer: &[u8; 160 * 144]) {
     let mut file = File::create(fname).unwrap();
     file.write_all(buffer).unwrap();
     println!("saved image {}", fname);
+    panic!("DUMPING TEST FILE");
 }
 
 fn get_test_data(fname: &str) -> [u8; 160 * 144] {
