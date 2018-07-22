@@ -7,3 +7,6 @@ In progress gameboy emulator written in rust
 ![alt text](https://github.com/arp2600/gb_emu/blob/master/test_data/rockybullwinkle.data.png)
 ![alt text](https://github.com/arp2600/gb_emu/blob/master/test_data/supermarioland.data.png)
 ![alt text](https://github.com/arp2600/gb_emu/blob/master/test_data/ultima.data.png)
+
+![alt text](https://github.com/arp2600/gb_emu/blob/master/test_data/pokemonblue_outside.data.png)
+![alt text](https://github.com/arp2600/gb_emu/blob/master/test_data/pokemonblue_fight.data.png)
