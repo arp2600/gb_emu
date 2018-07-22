@@ -1,8 +1,10 @@
 mod mbc1;
 mod mbc2;
+mod mbc3;
 mod rom_only;
 use self::mbc1::Mbc1;
 use self::mbc2::Mbc2;
+use self::mbc3::Mbc3;
 use self::rom_only::RomOnly;
 use memory::locations::*;
 use std::fs;
@@ -13,6 +15,7 @@ enum CartType {
     RomOnly,
     Mbc1,
     Mbc2,
+    Mbc3,
 }
 
 impl CartType {
@@ -21,6 +24,7 @@ impl CartType {
             0x00 => Ok(CartType::RomOnly),
             0x01 | 0x02 | 0x03 => Ok(CartType::Mbc1),
             0x05 | 0x06 => Ok(CartType::Mbc2),
+            0x0f...0x13 => Ok(CartType::Mbc3),
             _ => Err(format!("Unknown cart type {:#04x}", value)),
         }
     }
@@ -47,6 +51,7 @@ impl Cartridge {
             }
             CartType::Mbc1 => Box::new(Mbc1::new(&full_rom)),
             CartType::Mbc2 => Box::new(Mbc2::new(&full_rom)),
+            CartType::Mbc3 => Box::new(Mbc3::new(&full_rom)),
         }
     }
 }
