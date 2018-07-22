@@ -20,6 +20,8 @@ pub struct Mbc3 {
     ram_bank_index: usize,
     ram_banks: Vec<Vec<u8>>,
     rtc_registers: RtcRegisters,
+    latch_clock_data_reg: u8,
+    clock_data_latch: bool,
 }
 
 impl Mbc3 {
@@ -50,6 +52,10 @@ impl Mbc3 {
             ram_bank_index: 0,
             ram_banks,
             rtc_registers: Default::default(),
+            // latch clock data reg need to start at
+            // non zero value for correct operation
+            latch_clock_data_reg: 1,
+            clock_data_latch: false,
         }
     }
 }
@@ -117,7 +123,14 @@ impl Cartridge for Mbc3 {
                 }
                 _ => unimplemented!("rtc register select {}", value),
             },
-            0x6000...0x7fff => eprintln!("latch clock data {}", value),
+            0x6000...0x7fff => {
+                // Writing 0 and then 1 to latch_clock_data_reg
+                // enables and disables the clock_data_latch
+                if self.latch_clock_data_reg == 0 && value == 1 {
+                    self.clock_data_latch = !self.clock_data_latch;
+                }
+                self.latch_clock_data_reg = value;
+            }
             _ => panic!("bad write index"),
         }
     }
