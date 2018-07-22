@@ -1,6 +1,16 @@
 use super::{Cartridge, ROM_BANK_SIZE};
 use memory::locations::*;
 use memory::sizes;
+use std::default::Default;
+
+#[derive(Default)]
+struct RtcRegisters {
+    seconds: u8,
+    minutes: u8,
+    hours: u8,
+    day_low_bits: u8,
+    day_high_bits: u8,
+}
 
 pub struct Mbc3 {
     rom_bank_zero: Vec<u8>,
@@ -9,6 +19,7 @@ pub struct Mbc3 {
     ram_enabled: bool,
     ram_bank_index: usize,
     ram_banks: Vec<Vec<u8>>,
+    rtc_registers: RtcRegisters,
 }
 
 impl Mbc3 {
@@ -38,6 +49,7 @@ impl Mbc3 {
             ram_enabled: false,
             ram_bank_index: 0,
             ram_banks,
+            rtc_registers: Default::default(),
         }
     }
 }
@@ -52,20 +64,39 @@ impl Cartridge for Mbc3 {
                 assert!(index - ROM_BANK_SIZE < bank.len());
                 bank[index - ROM_BANK_SIZE]
             }
-            EXRAM_START...EXRAM_END => {
-                let bank = &self.ram_banks[self.ram_bank_index];
-                bank[index - EXRAM_START]
-            }
+            EXRAM_START...EXRAM_END => match self.ram_bank_index {
+                0x00...0x03 => {
+                    let bank = &self.ram_banks[self.ram_bank_index];
+                    bank[index - EXRAM_START]
+                }
+                0x08 => self.rtc_registers.seconds,
+                0x09 => self.rtc_registers.minutes,
+                0x0a => self.rtc_registers.hours,
+                0x0b => self.rtc_registers.day_low_bits,
+                0x0c => self.rtc_registers.day_high_bits,
+                _ => {
+                    eprintln!("warning: bad ram bank selected!");
+                    0
+                }
+            },
             _ => unreachable!(),
         }
     }
 
     fn set_u8(&mut self, index: usize, value: u8) {
         match index {
-            EXRAM_START...EXRAM_END => {
-                let bank = &mut self.ram_banks[self.ram_bank_index];
-                bank[index - EXRAM_START] = value;
-            }
+            EXRAM_START...EXRAM_END => match self.ram_bank_index {
+                0x00...0x03 => {
+                    let bank = &mut self.ram_banks[self.ram_bank_index];
+                    bank[index - EXRAM_START] = value;
+                }
+                0x08 => self.rtc_registers.seconds = value,
+                0x09 => self.rtc_registers.minutes = value,
+                0x0a => self.rtc_registers.hours = value,
+                0x0b => self.rtc_registers.day_low_bits = value,
+                0x0c => self.rtc_registers.day_high_bits = value,
+                _ => eprintln!("warning: bad ram bank selected!"),
+            },
             0x0000...0x1fff => match value & 0x0f {
                 0x0a => self.ram_enabled = true,
                 _ => self.ram_enabled = false,
