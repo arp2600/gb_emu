@@ -224,6 +224,11 @@ fn supermarioland_render() {
     );
 }
 
+#[test]
+fn ultima_render() {
+    test_vmem_dump("test_data/ultima.vmem_dump", "test_data/ultima.data");
+}
+
 fn test_vmem_dump(vmem_dump_path: &str, test_data_path: &str) {
     let mut vmem: VideoMemory = {
         let mut file = File::open(vmem_dump_path).unwrap();
@@ -243,7 +248,7 @@ fn test_vmem_dump(vmem_dump_path: &str, test_data_path: &str) {
         });
     }
 
-    let png_path = format!("{}.png", test_data_path);
+    // let png_path = format!("{}.png", test_data_path);
     // write_png(&png_path, &buffer);
     // dump_test_file(test_data_path, &buffer);
     test_against(test_data_path, &buffer);
