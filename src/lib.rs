@@ -104,4 +104,8 @@ impl Emulator {
     pub fn get_serial_data(&self) -> &[u8] {
         self.memory.get_serial_data()
     }
+
+    pub fn read_memory(&self, index: u16) -> u8 {
+        self.memory.get_u8(index)
+    }
 }
