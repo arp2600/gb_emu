@@ -3,10 +3,20 @@ use self::png_encode_mini::write_rgba_from_u8;
 use super::LCD;
 use cartridge::Cartridge;
 use memory::locations::*;
-use memory::{io_regs, Memory, VideoMemory};
+use memory::{io_regs, JoyPad, Memory, VideoMemory};
 use serde_json;
 use std::fs::File;
 use std::io::{Read, Write};
+use {App, Command};
+
+struct DummyApp {}
+
+impl App for DummyApp {
+    fn draw_line(&mut self, line_buffer: &[u8], line_index: u8) {}
+    fn update(&mut self, joypad: &mut JoyPad) -> Command {
+        return Command::Stop;
+    }
+}
 
 // Check lcd against old algorithm for calculating ly register
 #[test]
@@ -25,7 +35,8 @@ fn ly_timing() {
         let frame_time = cycles % (456 * 154);
         let test_ly = (frame_time / 456) as u8;
 
-        lcd.tick(memory.get_video_memory(), cycles, |_, _| {});
+        let mut app = DummyApp {};
+        lcd.tick(memory.get_video_memory(), cycles, &mut app);
         let lcd_ly = memory.get_io(io_regs::LY);
 
         assert_eq!(
@@ -71,7 +82,8 @@ fn test_stat_mode_frame(lcd: &mut LCD, memory: &mut Memory, frame_num: u64) {
         let cycles = line * 456 + base_cycles;
         // Mode 0 for first 4 cycles
         for c in cycles..(cycles + 4) {
-            lcd.tick(memory.get_video_memory(), c, |_, _| {});
+            let mut app = DummyApp {};
+            lcd.tick(memory.get_video_memory(), c, &mut app);
             let stat = memory.get_io(io_regs::STAT);
             let ly = memory.get_io(io_regs::LY);
             assert_eq!(stat & 0b11, 0);
@@ -79,7 +91,8 @@ fn test_stat_mode_frame(lcd: &mut LCD, memory: &mut Memory, frame_num: u64) {
         }
         // Test line 0 timings
         for c in (cycles + 4)..(cycles + 84) {
-            lcd.tick(memory.get_video_memory(), c, |_, _| {});
+            let mut app = DummyApp {};
+            lcd.tick(memory.get_video_memory(), c, &mut app);
             let stat = memory.get_io(io_regs::STAT);
             let ly = memory.get_io(io_regs::LY);
             assert_eq!(stat & 0b11, 2);
@@ -87,7 +100,8 @@ fn test_stat_mode_frame(lcd: &mut LCD, memory: &mut Memory, frame_num: u64) {
         }
         {
             // Mode 3 for indefinate time starting at 84
-            lcd.tick(memory.get_video_memory(), cycles + 84, |_, _| {});
+            let mut app = DummyApp {};
+            lcd.tick(memory.get_video_memory(), cycles + 84, &mut app);
             let stat = memory.get_io(io_regs::STAT);
             let ly = memory.get_io(io_regs::LY);
             assert_eq!(stat & 0b11, 3);
@@ -95,7 +109,8 @@ fn test_stat_mode_frame(lcd: &mut LCD, memory: &mut Memory, frame_num: u64) {
         }
         // By 448, mode should be 0, and should remain till end of scanline
         for c in (cycles + 448)..(cycles + 456) {
-            lcd.tick(memory.get_video_memory(), c, |_, _| {});
+            let mut app = DummyApp {};
+            lcd.tick(memory.get_video_memory(), c, &mut app);
             let stat = memory.get_io(io_regs::STAT);
             let ly = memory.get_io(io_regs::LY);
             assert_eq!(stat & 0b11, 0);
@@ -108,7 +123,8 @@ fn test_stat_mode_frame(lcd: &mut LCD, memory: &mut Memory, frame_num: u64) {
         let cycles = line * 456 + base_cycles;
         // Mode 0 for first 4 cycles
         for c in cycles..(cycles + 4) {
-            lcd.tick(memory.get_video_memory(), c, |_, _| {});
+            let mut app = DummyApp {};
+            lcd.tick(memory.get_video_memory(), c, &mut app);
             let stat = memory.get_io(io_regs::STAT);
             let ly = memory.get_io(io_regs::LY);
             assert_eq!(stat & 0b11, 0);
@@ -116,7 +132,8 @@ fn test_stat_mode_frame(lcd: &mut LCD, memory: &mut Memory, frame_num: u64) {
         }
         // Mode 1 for remaining cycles
         for c in (cycles + 4)..(cycles + 456) {
-            lcd.tick(memory.get_video_memory(), c, |_, _| {});
+            let mut app = DummyApp {};
+            lcd.tick(memory.get_video_memory(), c, &mut app);
             let stat = memory.get_io(io_regs::STAT);
             let ly = memory.get_io(io_regs::LY);
             assert_eq!(stat & 0b11, 1);
@@ -128,12 +145,37 @@ fn test_stat_mode_frame(lcd: &mut LCD, memory: &mut Memory, frame_num: u64) {
         let cycles = line * 456 + base_cycles;
         // Mode 1 for all cycles
         for c in cycles..(cycles + 456) {
-            lcd.tick(memory.get_video_memory(), c, |_, _| {});
+            let mut app = DummyApp {};
+            lcd.tick(memory.get_video_memory(), c, &mut app);
             let stat = memory.get_io(io_regs::STAT);
             let ly = memory.get_io(io_regs::LY);
             assert_eq!(stat & 0b11, 1);
             assert_eq!(ly as u64, line);
         }
+    }
+}
+
+struct BufferApp {
+    buffer: [u8; 160 * 144],
+}
+
+impl BufferApp {
+    fn new() -> BufferApp {
+        BufferApp {
+            buffer: [0; 160 * 144],
+        }
+    }
+}
+
+impl App for BufferApp {
+    fn draw_line(&mut self, line: &[u8], line_index: u8) {
+        for (i, v) in line.iter().enumerate() {
+            self.buffer[usize::from(line_index) * 160 + i] = *v;
+        }
+    }
+
+    fn update(&mut self, joypad: &mut JoyPad) -> Command {
+        return Command::Stop;
     }
 }
 
@@ -152,21 +194,17 @@ fn bg_checker_pattern() {
 
     let mut lcd = LCD::new();
 
-    let mut buffer = [0; 160 * 144];
+    let mut app = BufferApp::new();
 
     // Run 1 frame
     for cycles in 0..70224 {
-        lcd.tick(&mut vmem, cycles, |line, line_index| {
-            for (i, v) in line.iter().enumerate() {
-                buffer[usize::from(line_index) * 160 + i] = *v;
-            }
-        });
+        lcd.tick(&mut vmem, cycles, &mut app);
     }
 
     let test_file = "test_data/bg_checker_pattern.data";
-    test_against(test_file, &buffer);
-    // write_png("test_data/bg_checker_pattern.png", &buffer);
-    // dump_test_file(test_file, &buffer);
+    test_against(test_file, &app.buffer);
+    // write_png("test_data/bg_checker_pattern.png", &app.buffer);
+    // dump_test_file(test_file, &app.buffer);
 }
 
 #[test]
@@ -184,23 +222,18 @@ fn bg_checker_pattern_scx() {
 
     let mut lcd = LCD::new();
 
-    let mut buffer = [0; 160 * 144];
+    let mut app = BufferApp::new();
 
     // Run 1 frame
     for cycles in 0..70224 {
         vmem.regs.scx = vmem.regs.ly;
-
-        lcd.tick(&mut vmem, cycles, |line, line_index| {
-            for (i, v) in line.iter().enumerate() {
-                buffer[usize::from(line_index) * 160 + i] = *v;
-            }
-        });
+        lcd.tick(&mut vmem, cycles, &mut app);
     }
 
     let test_file = "test_data/bg_checker_pattern_scx.data";
-    test_against(test_file, &buffer);
-    // write_png("test_data/test.png", &buffer);
-    // dump_test_file(test_file, &buffer);
+    test_against(test_file, &app.buffer);
+    // write_png("test_data/test.png", &app.buffer);
+    // dump_test_file(test_file, &app.buffer);
 }
 
 #[test]
@@ -249,21 +282,17 @@ fn test_vmem_dump(vmem_dump_path: &str, test_data_path: &str) {
 
     let mut lcd = LCD::new();
 
-    let mut buffer = [0; 160 * 144];
+    let mut app = BufferApp::new();
 
     // Run 1 frame
     for cycles in 0..70224 {
-        lcd.tick(&mut vmem, cycles, |line, line_index| {
-            for (i, v) in line.iter().enumerate() {
-                buffer[usize::from(line_index) * 160 + i] = *v;
-            }
-        });
+        lcd.tick(&mut vmem, cycles, &mut app);
     }
 
     // let png_path = format!("{}.png", test_data_path);
-    // write_png(&png_path, &buffer);
-    // dump_test_file(test_data_path, &buffer);
-    test_against(test_data_path, &buffer);
+    // write_png(&png_path, &app.buffer);
+    // dump_test_file(test_data_path, &app.buffer);
+    test_against(test_data_path, &app.buffer);
 }
 
 fn color_tile(data_start: u16, index: usize, value: u8, vmem: &mut VideoMemory) {

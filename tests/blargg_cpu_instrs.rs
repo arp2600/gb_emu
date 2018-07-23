@@ -1,5 +1,5 @@
 extern crate gb_emu;
-use gb_emu::Emulator;
+use gb_emu::{App, Command, Emulator, JoyPad};
 use std::path::Path;
 use std::str;
 
@@ -68,12 +68,21 @@ fn op_a_hl() {
 //     run_test_rom("cpu_instrs.gb", 3_000_000);
 // }
 
+struct DummyApp {}
+impl App for DummyApp {
+    fn draw_line(&mut self, _: &[u8], _: u8) {}
+    fn update(&mut self, _: &mut JoyPad) -> Command {
+        return Command::Stop;
+    }
+}
+
 fn run_test_rom(test_rom: &str, max_cycles: u64) {
     let test_rom_path = Path::new("gb-test-roms/cpu_instrs").join(test_rom);
 
     let mut emulator = Emulator::new(None, test_rom_path.to_str().unwrap());
+    let mut app = DummyApp {};
     for _ in 0..max_cycles {
-        emulator.tick(|_, _| {})
+        emulator.tick(&mut app);
     }
 
     let serial_data = emulator.get_serial_data();
