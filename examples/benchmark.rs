@@ -1,45 +1,55 @@
 extern crate gb_emu;
-use gb_emu::{Command, Emulator, JoyPad};
+use gb_emu::{App, Command, Emulator, JoyPad};
 use std::time::{Duration, Instant};
 
+struct BenchmarkApp {
+    frame_counter: u64,
+    run_till: u64,
+}
+
+impl App for BenchmarkApp {
+    fn draw_line(&mut self, _: &[u8], _: u8) {}
+    fn update(&mut self, _: &mut JoyPad) -> Command {
+        self.frame_counter += 1;
+        if self.frame_counter >= self.run_till {
+            Command::Stop
+        } else {
+            Command::Continue
+        }
+    }
+}
+
 fn main() {
+    let rom = "../../ROMs/super_mario_land_1.1.gb";
+    println!("_BENCH_ rom: {}", rom);
     let durations = {
         let mut v = Vec::new();
-        for _ in 0..3 {
-            let d = run_test();
+        for i in 0..3 {
+            let d = run_test(rom, 683, 1973);
             v.push(d);
+            println!("_BENCH_ run_{}: {:?}", i, d);
         }
         v
     };
     let total: Duration = durations.iter().sum();
     let average = total / 3;
-    // println!("_BENCH_ durations: {:?}", durations);
-    // println!("_BENCH_ total: {:?}", total);
-    // println!("_BENCH_ average: {:?}", average);
 
-    println!("_BENCH_ rom: cpu_instrs.gb");
     println!("_BENCH_ average: {:?}", average);
 }
 
-fn run_test() -> Duration {
-    let cartridge_rom = "gb-test-roms/cpu_instrs/cpu_instrs.gb";
-    let mut emulator = Emulator::new(None, cartridge_rom);
-
-    emulator.set_tracing(false);
-    let update_fn = {
-        let mut frame_counter = 0;
-
-        move |_: &mut JoyPad| {
-            frame_counter += 1;
-            if frame_counter >= 3350 {
-                Command::Stop
-            } else {
-                Command::Continue
-            }
-        }
+fn run_test(cart: &str, start_at_frames: u64, end_at_frames: u64) -> Duration {
+    let mut emulator = Emulator::new(None, cart);
+    let mut app = BenchmarkApp {
+        frame_counter: 0,
+        run_till: start_at_frames,
     };
+    emulator.run(&mut app);
+    assert_eq!(app.frame_counter, start_at_frames);
 
+    app.run_till = end_at_frames;
     let start = Instant::now();
-    emulator.run(|_, _| {}, update_fn);
-    start.elapsed()
+    emulator.run(&mut app);
+    let test_duration = start.elapsed();
+    assert_eq!(app.frame_counter, end_at_frames);
+    test_duration
 }
