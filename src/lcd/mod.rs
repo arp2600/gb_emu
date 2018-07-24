@@ -13,6 +13,8 @@ pub struct LCD {
     next_ly: u8,
     vblank_flag: bool,
     mode_updater: ModeUpdater,
+    background_tile_map_cache: [u16; 32 * 32],
+    frame_count: u64,
 }
 
 impl LCD {
@@ -24,6 +26,8 @@ impl LCD {
             next_ly: 0,
             vblank_flag: false,
             mode_updater: Default::default(),
+            background_tile_map_cache: [0; 32 * 32],
+            frame_count: 0,
         }
     }
 
@@ -51,8 +55,12 @@ impl LCD {
             self.update_time += 456;
 
             let ly = vram.regs.ly;
+            if ly == 0 {
+                self.draw_background(vram);
+            }
+
             if ly < 144 {
-                draw_line(vram, app);
+                self.draw_line(vram, app);
             } else if ly == 144 {
                 self.vblank_flag = true;
             }
@@ -77,6 +85,32 @@ impl LCD {
             self.mode_updater.update(vram, cycles);
         }
     }
+
+    fn draw_background(&mut self, vram: &VideoMemory) {
+        self.frame_count += 1;
+
+        let tile_data_start = vram.get_tile_data_select();
+        let tile_map_start = vram.get_bg_tilemap_display_select();
+        let tile_map_cache = &mut self.background_tile_map_cache;
+        for (i, v) in tile_map_cache.iter_mut().enumerate() {
+            let tile_index = u16::from(vram[tile_map_start as usize + i]);
+            let tile_address = match tile_data_start {
+                TILE_DATA_1 => {
+                    let x = (tile_index as i8) as i16;
+                    assert!(x >= -128 && x <= 127, "x = {}", x);
+                    let x = ((x + 128) * 16) as u16;
+                    tile_data_start + x
+                }
+                TILE_DATA_2 => tile_data_start + tile_index * 16,
+                _ => unreachable!(),
+            };
+
+            if *v != tile_address {
+                println!("frame {} tile at {} differs", self.frame_count, tile_index);
+                *v = tile_address;
+            }
+        }
+    }
 }
 
 fn create_combined_palette(bgp: u8, obp1: u8, obp2: u8) -> [u8; 12] {
@@ -94,12 +128,6 @@ fn create_combined_palette(bgp: u8, obp1: u8, obp2: u8) -> [u8; 12] {
         3 - ((obp2 >> 4) & 0b11),
         3 - ((obp2 >> 6) & 0b11),
     ]
-}
-
-fn get_bg_tile_index(x: u16, y: u16, vram: &VideoMemory) -> u16 {
-    let tile_map = vram.get_bg_tilemap_display_select();
-    let i = tile_map + x + 32 * y;
-    u16::from(vram[i as usize])
 }
 
 fn get_window_tile_index(x: u16, y: u16, vram: &VideoMemory) -> u16 {
@@ -155,43 +183,32 @@ fn draw_windows(vram: &VideoMemory, line: &mut [u8; 160]) {
     }
 }
 
-fn draw_bg(vram: &VideoMemory, line: &mut [u8; 160]) {
-    let ly = vram.regs.ly;
+impl LCD {
+    fn draw_bg_line(&self, vram: &VideoMemory, line: &mut [u8; 160]) {
+        let ly = vram.regs.ly;
 
-    // Look at each tile on the current line
-    for x in 0..(256 / 8) {
-        let scy = vram.regs.scy;
-        let scx = vram.regs.scx;
-        let ly_scy = ly.wrapping_add(scy);
-        let y = u16::from(ly_scy / 8);
+        // Look at each tile on the current line
+        for x in 0..(256 / 8) {
+            let scy = vram.regs.scy;
+            let scx = vram.regs.scx;
+            let ly_scy = ly.wrapping_add(scy);
+            let y = u16::from(ly_scy / 8);
 
-        // Get the index of the tile data
-        let tile_data_index = get_bg_tile_index(x, y, vram);
+            let tile_map_cache = &self.background_tile_map_cache;
+            let tile_address = tile_map_cache[usize::from(x + y * 32)];
+            let tile_y_index = u16::from(ly_scy % 8);
+            let line_address = tile_address + tile_y_index * 2;
 
-        // Get the address of the tile
-        let tile_data_start = vram.get_tile_data_select();
-        let tile_address = match tile_data_start {
-            TILE_DATA_1 => {
-                let x = (tile_data_index as i8) as i16;
-                assert!(x >= -128 && x <= 127, "x = {}", x);
-                let x = ((x + 128) * 16) as u16;
-                tile_data_start + x
-            }
-            TILE_DATA_2 => tile_data_start + tile_data_index * 16,
-            _ => unreachable!(),
-        };
-        let tile_y_index = u16::from(ly_scy % 8);
-        let line_address = tile_address + tile_y_index * 2;
+            let pixels = vram.get_u16(line_address as usize);
+            for (i, pixel) in PixelIterator::new(pixels).enumerate() {
+                let line_index = {
+                    let t = (x as u8 * 8) + i as u8;
+                    t.wrapping_sub(scx) as usize
+                };
 
-        let pixels = vram.get_u16(line_address as usize);
-        for (i, pixel) in PixelIterator::new(pixels).enumerate() {
-            let line_index = {
-                let t = (x as u8 * 8) + i as u8;
-                t.wrapping_sub(scx) as usize
-            };
-
-            if line_index < line.len() {
-                line[line_index] = pixel;
+                if line_index < line.len() {
+                    line[line_index] = pixel;
+                }
             }
         }
     }
@@ -266,23 +283,25 @@ fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
     }
 }
 
-fn draw_line<T: App>(vram: &VideoMemory, app: &mut T) {
-    let mut line = [0; 160];
+impl LCD {
+    fn draw_line<T: App>(&self, vram: &VideoMemory, app: &mut T) {
+        let mut line = [0; 160];
 
-    draw_bg(vram, &mut line);
-    draw_windows(vram, &mut line);
-    draw_sprites(vram, &mut line);
+        self.draw_bg_line(vram, &mut line);
+        draw_windows(vram, &mut line);
+        draw_sprites(vram, &mut line);
 
-    let bgp = vram.regs.bgp;
-    let obp1 = vram.get_obp(0);
-    let obp2 = vram.get_obp(2);
-    let palette = create_combined_palette(bgp, obp1, obp2);
-    for x in line.iter_mut() {
-        *x = palette[*x as usize];
+        let bgp = vram.regs.bgp;
+        let obp1 = vram.get_obp(0);
+        let obp2 = vram.get_obp(2);
+        let palette = create_combined_palette(bgp, obp1, obp2);
+        for x in line.iter_mut() {
+            *x = palette[*x as usize];
+        }
+
+        let ly = vram.regs.ly;
+        app.draw_line(&line, ly);
     }
-
-    let ly = vram.regs.ly;
-    app.draw_line(&line, ly);
 }
 
 #[cfg(test)]
