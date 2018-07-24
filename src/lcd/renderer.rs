@@ -1,9 +1,10 @@
 use super::pixel_iterator::PixelIterator;
 use bit_ops::BitGetSet;
-use memory::{locations::*, VideoMemory};
+use memory::{locations::*, TileDataState, VideoMemory};
 use App;
 
 pub struct Renderer {
+    background_screen_buffer: [u8; 160 * 144],
     background_tile_map_cache: [u16; 32 * 32],
     frame_count: u64,
 }
@@ -11,12 +12,13 @@ pub struct Renderer {
 impl Renderer {
     pub fn new() -> Renderer {
         Renderer {
+            background_screen_buffer: [0; 160 * 144],
             background_tile_map_cache: [0; 32 * 32],
             frame_count: 0,
         }
     }
 
-    pub fn draw_background(&mut self, vram: &VideoMemory) {
+    pub fn draw_background(&mut self, vram: &mut VideoMemory) {
         self.frame_count += 1;
 
         let tile_data_start = vram.get_tile_data_select();
@@ -35,9 +37,21 @@ impl Renderer {
                 _ => unreachable!(),
             };
 
-            if *v != tile_address {
-                println!("frame {} tile at {} differs", self.frame_count, tile_index);
+            let tile_index = usize::from((tile_address - 0x8000) / 16);
+            let is_dirty = match vram.tile_data_states[tile_index] {
+                TileDataState::Dirty => true,
+                TileDataState::Clean => false,
+            };
+            if *v != tile_address || is_dirty {
+                // TODO force tile redraw here
+                if *v != tile_address {
+                    println!("tile_address {} has changed", i);
+                }
+                if is_dirty {
+                    println!("tile {} is dirty", tile_index);
+                }
                 *v = tile_address;
+                vram.tile_data_states[tile_index] = TileDataState::Clean;
             }
         }
     }

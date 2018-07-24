@@ -5,7 +5,7 @@ pub mod sizes;
 mod video_memory;
 pub use self::joypad::JoyPad;
 use self::locations::*;
-pub use self::video_memory::VideoMemory;
+pub use self::video_memory::{TileDataState, VideoMemory};
 use bit_ops::BitGetSet;
 use cartridge::Cartridge;
 use std::collections::HashSet;
