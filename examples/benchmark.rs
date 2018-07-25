@@ -24,7 +24,7 @@ fn main() {
     println!("_BENCH_ rom: {}", rom);
     let durations = {
         let mut v = Vec::new();
-        for i in 0..3 {
+        for i in 0..10 {
             let d = run_test(rom, 683, 1973);
             v.push(d);
             println!("_BENCH_ run_{}: {:?}", i, d);
@@ -32,7 +32,7 @@ fn main() {
         v
     };
     let total: Duration = durations.iter().sum();
-    let average = total / 3;
+    let average = total / durations.len() as u32;
 
     println!("_BENCH_ average: {:?}", average);
 }
