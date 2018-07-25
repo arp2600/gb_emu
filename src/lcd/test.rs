@@ -6,7 +6,8 @@ use memory::locations::*;
 use memory::{io_regs, JoyPad, Memory, VideoMemory};
 use serde_json;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::prelude::*;
+use std::io::{BufReader, Read, Write};
 use {App, Command};
 
 struct DummyApp {}
@@ -275,10 +276,24 @@ fn pokemon_render() {
 }
 
 fn test_vmem_dump(vmem_dump_path: &str, test_data_path: &str) {
-    let mut vmem: VideoMemory = {
-        let mut file = File::open(vmem_dump_path).unwrap();
-        serde_json::from_reader(&file).unwrap()
+    let mut mem = {
+        let cart = Cartridge::create_dummy();
+        Memory::new(Vec::new(), cart)
     };
+    let file = File::open(vmem_dump_path).unwrap();
+    let f = BufReader::new(file);
+    for line in f.lines() {
+        let line = line.unwrap();
+        let addr: Vec<&str> = line.split(": ").take(1).collect();
+        let addr = u16::from_str_radix(addr[0], 16).unwrap();
+        let data: Vec<&str> = line.split(" ").skip(1).collect();
+        for (i, v) in data.iter().enumerate() {
+            let index = addr + i as u16;
+            let v = u8::from_str_radix(v, 16).unwrap();
+            mem.set_u8(index, v);
+        }
+    }
+    let mut vmem = mem.get_video_memory();
 
     let mut lcd = LCD::new();
 
