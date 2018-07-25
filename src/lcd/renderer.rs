@@ -1,19 +1,21 @@
 use super::pixel_iterator::PixelIterator;
 use bit_ops::BitGetSet;
-use memory::{locations::*, TileDataState, VideoMemory};
+use memory::{locations::*, VideoMemory};
 use App;
 
 pub struct Renderer {
-    background_screen_buffer: [u8; 160 * 144],
+    background_screen_buffer: [u8; 256 * 256],
     background_tile_map_cache: [u16; 32 * 32],
+    background_tile_write_cache: [u64; 32 * 32],
     frame_count: u64,
 }
 
 impl Renderer {
     pub fn new() -> Renderer {
         Renderer {
-            background_screen_buffer: [0; 160 * 144],
+            background_screen_buffer: [0; 256 * 256],
             background_tile_map_cache: [0; 32 * 32],
+            background_tile_write_cache: [0; 32 * 32],
             frame_count: 0,
         }
     }
@@ -38,9 +40,10 @@ impl Renderer {
             };
 
             let tile_index = usize::from((tile_address - 0x8000) / 16);
-            let is_dirty = match vram.tile_data_states[tile_index] {
-                TileDataState::Dirty => true,
-                TileDataState::Clean => false,
+            let is_dirty = {
+                let a = self.background_tile_write_cache[tile_index];
+                let b = vram.tile_write_counts[tile_index];
+                a != b
             };
             if *v != tile_address || is_dirty {
                 // TODO force tile redraw here
@@ -51,7 +54,25 @@ impl Renderer {
                     println!("tile {} is dirty", tile_index);
                 }
                 *v = tile_address;
-                vram.tile_data_states[tile_index] = TileDataState::Clean;
+                self.background_tile_write_cache[tile_index] = vram.tile_write_counts[tile_index];
+            }
+        }
+
+        // for each tile
+        for i in 0..(32 * 32) {
+            let x = i % 32;
+            let y = i / 32;
+
+            let tile_address = tile_map_cache[usize::from(x + y * 32)];
+            for yi in 0..8 {
+                let tile_y_index = yi as u16;
+                let line_address = tile_address + tile_y_index * 2;
+
+                let pixels = vram.get_u16(line_address as usize);
+                for (xi, pixel) in PixelIterator::new(pixels).enumerate() {
+                    let index = (x * 8 + xi) + y * 256 * 8 + yi * 256;
+                    self.background_screen_buffer[index] = pixel;
+                }
             }
         }
     }
@@ -76,31 +97,11 @@ impl Renderer {
     }
 
     fn draw_bg_line(&self, vram: &VideoMemory, line: &mut [u8; 160]) {
-        let ly = vram.regs.ly;
-
-        // Look at each tile on the current line
-        for x in 0..(256 / 8) {
-            let scy = vram.regs.scy;
+        let y = usize::from(vram.regs.ly.wrapping_add(vram.regs.scy));
+        for x in 0..160 {
             let scx = vram.regs.scx;
-            let ly_scy = ly.wrapping_add(scy);
-            let y = u16::from(ly_scy / 8);
-
-            let tile_map_cache = &self.background_tile_map_cache;
-            let tile_address = tile_map_cache[usize::from(x + y * 32)];
-            let tile_y_index = u16::from(ly_scy % 8);
-            let line_address = tile_address + tile_y_index * 2;
-
-            let pixels = vram.get_u16(line_address as usize);
-            for (i, pixel) in PixelIterator::new(pixels).enumerate() {
-                let line_index = {
-                    let t = (x as u8 * 8) + i as u8;
-                    t.wrapping_sub(scx) as usize
-                };
-
-                if line_index < line.len() {
-                    line[line_index] = pixel;
-                }
-            }
+            let i = y * 256 + usize::from((x as u8).wrapping_add(scx));
+            line[x as usize] = self.background_screen_buffer[i];
         }
     }
 }

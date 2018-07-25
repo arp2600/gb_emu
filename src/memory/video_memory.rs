@@ -3,12 +3,6 @@ use bit_ops::BitGetSet;
 use std::default::Default;
 use std::ops::{Index, IndexMut};
 
-#[derive(Copy, Clone)]
-pub enum TileDataState {
-    Dirty,
-    Clean,
-}
-
 #[derive(Default)]
 pub struct VideoRegisters {
     pub lcdc: u8,
@@ -29,7 +23,7 @@ pub struct VideoRegisters {
 pub struct VideoMemory {
     vram: Vec<u8>,
     oam: Vec<u8>,
-    pub tile_data_states: Vec<TileDataState>,
+    pub tile_write_counts: Vec<u64>,
     pub regs: VideoRegisters,
 }
 
@@ -37,11 +31,11 @@ impl VideoMemory {
     pub(super) fn new() -> VideoMemory {
         let vram = vec![0; sizes::VRAM];
         let oam = vec![0; sizes::OAM];
-        let tile_data_states = vec![TileDataState::Dirty; 0x180];
+        let tile_write_counts = vec![0; 0x180];
         VideoMemory {
             vram,
             oam,
-            tile_data_states,
+            tile_write_counts,
             regs: Default::default(),
         }
     }
@@ -145,7 +139,7 @@ impl IndexMut<usize> for VideoMemory {
         match index {
             0x8000...0x97ff => {
                 let tile = (index - 0x8000) / 16;
-                self.tile_data_states[tile] = TileDataState::Dirty;
+                self.tile_write_counts[tile] += 1;
             }
             _ => (),
         }
