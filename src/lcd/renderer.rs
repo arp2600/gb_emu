@@ -25,8 +25,8 @@ impl Renderer {
 
         let tile_data_start = vram.get_tile_data_select();
         let tile_map_start = vram.get_bg_tilemap_display_select();
-        let tile_map_cache = &mut self.background_tile_map_cache;
-        for (i, v) in tile_map_cache.iter_mut().enumerate() {
+        let mut update_indices = Vec::new();
+        for (i, v) in self.background_tile_map_cache.iter_mut().enumerate() {
             let tile_index = u16::from(vram[tile_map_start as usize + i]);
             let tile_address = match tile_data_start {
                 TILE_DATA_1 => {
@@ -46,33 +46,31 @@ impl Renderer {
                 a != b
             };
             if *v != tile_address || is_dirty {
-                // TODO force tile redraw here
-                if *v != tile_address {
-                    println!("tile_address {} has changed", i);
-                }
-                if is_dirty {
-                    println!("tile {} is dirty", tile_index);
-                }
                 *v = tile_address;
                 self.background_tile_write_cache[tile_index] = vram.tile_write_counts[tile_index];
+                update_indices.push(i);
             }
         }
 
-        // for each tile
-        for i in 0..(32 * 32) {
-            let x = i % 32;
-            let y = i / 32;
+        for i in update_indices.iter() {
+            self.draw_background_tile(*i, vram);
+        }
+    }
 
-            let tile_address = tile_map_cache[usize::from(x + y * 32)];
-            for yi in 0..8 {
-                let tile_y_index = yi as u16;
-                let line_address = tile_address + tile_y_index * 2;
+    fn draw_background_tile(&mut self, tile_index: usize, vram: &VideoMemory) {
+        let x = tile_index % 32;
+        let y = tile_index / 32;
 
-                let pixels = vram.get_u16(line_address as usize);
-                for (xi, pixel) in PixelIterator::new(pixels).enumerate() {
-                    let index = (x * 8 + xi) + y * 256 * 8 + yi * 256;
-                    self.background_screen_buffer[index] = pixel;
-                }
+        let tile_map_cache = &mut self.background_tile_map_cache;
+        let tile_address = tile_map_cache[usize::from(x + y * 32)];
+        for yi in 0..8 {
+            let tile_y_index = yi as u16;
+            let line_address = tile_address + tile_y_index * 2;
+
+            let pixels = vram.get_u16(line_address as usize);
+            for (xi, pixel) in PixelIterator::new(pixels).enumerate() {
+                let index = (x * 8 + xi) + y * 256 * 8 + yi * 256;
+                self.background_screen_buffer[index] = pixel;
             }
         }
     }
