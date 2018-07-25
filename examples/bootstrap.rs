@@ -4,8 +4,8 @@ use std::str;
 
 struct DummyApp {}
 impl App for DummyApp {
-    fn draw_line(&mut self, line_buffer: &[u8], line_index: u8) {}
-    fn update(&mut self, joypad: &mut JoyPad) -> Command {
+    fn draw_line(&mut self, _: &[u8], _: u8) {}
+    fn update(&mut self, _: &mut JoyPad) -> Command {
         return Command::Stop;
     }
 }
