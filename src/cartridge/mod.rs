@@ -33,6 +33,8 @@ impl CartType {
 pub trait Cartridge {
     fn get_u8(&self, index: usize) -> u8;
     fn set_u8(&mut self, index: usize, value: u8);
+    fn get_ram(&self) -> Vec<u8>;
+    fn set_ram(&mut self, all_ram: &[u8]);
 }
 
 impl Cartridge {

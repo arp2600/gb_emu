@@ -15,4 +15,12 @@ impl Cartridge for RomOnly {
             index, value
         );
     }
+
+    fn get_ram(&self) -> Vec<u8> {
+        unimplemented!();
+    }
+
+    fn set_ram(&mut self, _: &[u8]) {
+        unimplemented!();
+    }
 }

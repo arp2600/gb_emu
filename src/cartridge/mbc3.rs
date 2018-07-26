@@ -134,4 +134,19 @@ impl Cartridge for Mbc3 {
             _ => panic!("bad write index"),
         }
     }
+
+    fn get_ram(&self) -> Vec<u8> {
+        let mut all_ram = Vec::new();
+        for bank in self.ram_banks.iter() {
+            all_ram.extend(bank);
+        }
+        all_ram
+    }
+
+    fn set_ram(&mut self, all_ram: &[u8]) {
+        for (i, chunk) in all_ram.chunks(sizes::EXRAM).enumerate() {
+            self.ram_banks[i].clear();
+            self.ram_banks[i].extend(chunk);
+        }
+    }
 }

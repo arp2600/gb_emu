@@ -45,6 +45,14 @@ impl Memory {
         &mut self.vram
     }
 
+    pub fn get_cartridge(&self) -> &Cartridge {
+        &*self.cartridge
+    }
+
+    pub fn get_cartridge_mut(&mut self) -> &mut Cartridge {
+        &mut *self.cartridge
+    }
+
     pub fn get_joypad(&mut self) -> &mut JoyPad {
         &mut self.joypad
     }

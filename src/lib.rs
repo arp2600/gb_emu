@@ -103,4 +103,16 @@ impl Emulator {
     pub fn read_memory(&self, index: u16) -> u8 {
         self.memory.get_u8(index)
     }
+
+    pub fn save_cartridge_ram(&self, path: &str) {
+        let cartridge = self.memory.get_cartridge();
+        let cart_ram = cartridge.get_ram();
+        fs::write(path, &cart_ram).unwrap();
+    }
+
+    pub fn load_cartridge_ram(&mut self, path: &str) {
+        let cartridge = self.memory.get_cartridge_mut();
+        let data = fs::read(path).unwrap();
+        cartridge.set_ram(&data);
+    }
 }
