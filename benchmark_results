@@ -7,10 +7,27 @@ run_2: 939.420043ms
 average: 946.132024ms
 
 Wed 25 Jul 2018 22:36:38 BST
+caching background
 commit b3b6d463d087226f162a1d862d4b2668d456c221
 rom: ../../ROMs/super_mario_land_1.1.gb
 run_0: 762.082601ms
 run_1: 762.186179ms
 run_2: 834.135141ms
 average: 786.134639ms
+
+Fri 27 Jul 2018 23:55:17 BST
+turned on lto
+commit 2c831f732d2452c5576fa23b8a1cd05531d089b2 
+rom: ../../ROMs/super_mario_land_1.1.gb
+run_0: 338.94169ms
+run_1: 336.250491ms
+run_2: 337.655655ms
+run_3: 336.354443ms
+run_4: 351.549941ms
+run_5: 339.79372ms
+run_6: 337.043127ms
+run_7: 336.006651ms
+run_8: 336.582546ms
+run_9: 336.632349ms
+average: 338.681061ms
 
