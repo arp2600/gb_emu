@@ -4,6 +4,31 @@ use std::default::Default;
 #[derive(Default)]
 pub struct SoundRegisters {
     nr51: u8,
+    channel2: Channel2,
+}
+
+enum EnvelopeDirection {
+    Decrease,
+    Increase,
+}
+
+impl Default for EnvelopeDirection {
+    fn default() -> EnvelopeDirection {
+        EnvelopeDirection::Decrease
+    }
+}
+
+#[derive(Default)]
+struct Channel2 {
+    frequency_data: u16,
+    frequency: f32,
+    duty_cycle: u8,
+    t1: u8,
+    sound_length: f32,
+    use_length: bool,
+    envelope_start_value: u8,
+    envelope_direction: EnvelopeDirection,
+    envelope_sweep_num: u8,
 }
 
 impl SoundRegisters {
@@ -48,75 +73,76 @@ impl SoundRegisters {
         println!("so1 level {}", so1_level);
     }
 
-    pub fn set_nr10(&mut self, _value: u8) {
-        unimplemented!();
+    pub fn set_nr10(&mut self, _value: u8) {}
+
+    pub fn set_nr11(&mut self, _value: u8) {}
+
+    pub fn set_nr12(&mut self, _value: u8) {}
+
+    pub fn set_nr13(&mut self, _value: u8) {}
+
+    pub fn set_nr14(&mut self, _value: u8) {}
+
+    pub fn set_nr21(&mut self, value: u8) {
+        let c = &mut self.channel2;
+
+        c.duty_cycle = value >> 6;
+        c.t1 = value & 0b1_1111;
+        c.sound_length = (64.0 - c.t1 as f32) * (1.0 / 256.0);
     }
 
-    pub fn set_nr11(&mut self, _value: u8) {
-        unimplemented!();
+    pub fn set_nr22(&mut self, value: u8) {
+        let c = &mut self.channel2;
+
+        c.envelope_start_value = value >> 4;
+        c.envelope_direction = if value.get_bit(3) {
+            EnvelopeDirection::Increase
+        } else {
+            EnvelopeDirection::Decrease
+        };
+        c.envelope_sweep_num = value & 0b111;
     }
 
-    pub fn set_nr12(&mut self, _value: u8) {
-        unimplemented!();
+    pub fn set_nr23(&mut self, value: u8) {
+        let c = &mut self.channel2;
+
+        c.frequency_data = {
+            let x = u16::from(value);
+            (c.frequency_data & 0xff00) | x
+        };
+        c.frequency = 131072.0 / (2048.0 - c.frequency_data as f32);
     }
 
-    pub fn set_nr13(&mut self, _value: u8) {
-        unimplemented!();
+    pub fn set_nr24(&mut self, value: u8) {
+        let c = &mut self.channel2;
+
+        if value.get_bit(7) {
+            println!("Restarting sound")
+        }
+        c.use_length = value.get_bit(6);
+
+        c.frequency_data = {
+            let x = u16::from(value & 0b111) << 8;
+            (c.frequency_data & 0x00ff) | x
+        };
+        c.frequency = 131072.0 / (2048.0 - c.frequency_data as f32);
     }
 
-    pub fn set_nr14(&mut self, _value: u8) {
-        unimplemented!();
-    }
+    pub fn set_nr30(&mut self, _value: u8) {}
 
-    pub fn set_nr21(&mut self, _value: u8) {
-        unimplemented!();
-    }
+    pub fn set_nr31(&mut self, _value: u8) {}
 
-    pub fn set_nr22(&mut self, _value: u8) {
-        unimplemented!();
-    }
+    pub fn set_nr32(&mut self, _value: u8) {}
 
-    pub fn set_nr23(&mut self, _value: u8) {
-        unimplemented!();
-    }
+    pub fn set_nr33(&mut self, _value: u8) {}
 
-    pub fn set_nr24(&mut self, _value: u8) {
-        unimplemented!();
-    }
+    pub fn set_nr34(&mut self, _value: u8) {}
 
-    pub fn set_nr30(&mut self, _value: u8) {
-        unimplemented!();
-    }
+    pub fn set_nr41(&mut self, _value: u8) {}
 
-    pub fn set_nr31(&mut self, _value: u8) {
-        unimplemented!();
-    }
+    pub fn set_nr42(&mut self, _value: u8) {}
 
-    pub fn set_nr32(&mut self, _value: u8) {
-        unimplemented!();
-    }
+    pub fn set_nr43(&mut self, _value: u8) {}
 
-    pub fn set_nr33(&mut self, _value: u8) {
-        unimplemented!();
-    }
-
-    pub fn set_nr34(&mut self, _value: u8) {
-        unimplemented!();
-    }
-
-    pub fn set_nr41(&mut self, _value: u8) {
-        unimplemented!();
-    }
-
-    pub fn set_nr42(&mut self, _value: u8) {
-        unimplemented!();
-    }
-
-    pub fn set_nr43(&mut self, _value: u8) {
-        unimplemented!();
-    }
-
-    pub fn set_nr44(&mut self, _value: u8) {
-        unimplemented!();
-    }
+    pub fn set_nr44(&mut self, _value: u8) {}
 }
