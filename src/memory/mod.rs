@@ -2,9 +2,11 @@ pub mod io_regs;
 pub mod joypad;
 pub mod locations;
 pub mod sizes;
+mod sound_registers;
 mod video_memory;
 pub use self::joypad::JoyPad;
 use self::locations::*;
+use self::sound_registers::SoundRegisters;
 pub use self::video_memory::VideoMemory;
 use bit_ops::BitGetSet;
 use cartridge::Cartridge;
@@ -15,6 +17,7 @@ pub struct Memory {
     boot_rom_enabled: bool,
     cartridge: Box<Cartridge>,
     vram: VideoMemory,
+    sound_registers: SoundRegisters,
     wram: [u8; sizes::WRAM],
     io: [u8; sizes::IO],
     hram: [u8; sizes::HRAM],
@@ -32,6 +35,7 @@ impl Memory {
             cartridge,
             hram: [0; sizes::HRAM],
             vram: VideoMemory::new(),
+            sound_registers: SoundRegisters::new(),
             wram: [0; sizes::WRAM],
             io: [0; sizes::IO],
             interrupt_enable_register: 0,
@@ -150,6 +154,27 @@ impl Memory {
             io_regs::DIV | io_regs::TIMA | io_regs::TMA | io_regs::TAC => {
                 self.io[index - IO_START] = value;
             }
+            io_regs::NR10 => self.sound_registers.set_nr10(value),
+            io_regs::NR11 => self.sound_registers.set_nr11(value),
+            io_regs::NR12 => self.sound_registers.set_nr12(value),
+            io_regs::NR13 => self.sound_registers.set_nr13(value),
+            io_regs::NR14 => self.sound_registers.set_nr14(value),
+            io_regs::NR21 => self.sound_registers.set_nr21(value),
+            io_regs::NR22 => self.sound_registers.set_nr22(value),
+            io_regs::NR23 => self.sound_registers.set_nr23(value),
+            io_regs::NR24 => self.sound_registers.set_nr24(value),
+            io_regs::NR30 => self.sound_registers.set_nr30(value),
+            io_regs::NR31 => self.sound_registers.set_nr31(value),
+            io_regs::NR32 => self.sound_registers.set_nr32(value),
+            io_regs::NR33 => self.sound_registers.set_nr33(value),
+            io_regs::NR34 => self.sound_registers.set_nr34(value),
+            io_regs::NR41 => self.sound_registers.set_nr41(value),
+            io_regs::NR42 => self.sound_registers.set_nr42(value),
+            io_regs::NR43 => self.sound_registers.set_nr43(value),
+            io_regs::NR44 => self.sound_registers.set_nr44(value),
+            io_regs::NR50 => self.sound_registers.set_nr50(value),
+            io_regs::NR51 => self.sound_registers.set_nr51(value),
+            io_regs::NR52 => self.sound_registers.set_nr52(value),
             _ => {
                 eprintln_once_per_key!(
                     index,

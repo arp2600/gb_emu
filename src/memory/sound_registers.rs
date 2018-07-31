@@ -1,0 +1,122 @@
+use bit_ops::BitGetSet;
+use std::default::Default;
+
+#[derive(Default)]
+pub struct SoundRegisters {
+    nr51: u8,
+}
+
+impl SoundRegisters {
+    pub fn new() -> SoundRegisters {
+        Default::default()
+    }
+
+    pub fn set_nr52(&mut self, value: u8) {
+        if value.get_bit(7) {
+            println!("turning on sound");
+        } else {
+            // Turning off the sound clears all sound registers
+            unimplemented!("error: turning off sound is unimplemented");
+        }
+    }
+
+    pub fn set_nr51(&mut self, value: u8) {
+        if self.nr51 != value {
+            self.nr51 = value;
+            println!("setting nr51 to {:#04x}", value);
+            for i in 0..4 {
+                if value.get_bit(i) {
+                    println!("outputing sound {} to SO1", i + 1);
+                }
+                if value.get_bit(4 + i) {
+                    println!("outputing sound {} to SO2", i + 1);
+                }
+            }
+        }
+    }
+
+    pub fn set_nr50(&mut self, value: u8) {
+        if value.get_bit(7) {
+            println!("outputing vin to SO2");
+        }
+        if value.get_bit(3) {
+            println!("outputing vin to SO1");
+        }
+        let so2_level = (value >> 4) & 0b11;
+        println!("so2 level {}", so2_level);
+        let so1_level = value & 0b11;
+        println!("so1 level {}", so1_level);
+    }
+
+    pub fn set_nr10(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr11(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr12(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr13(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr14(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr21(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr22(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr23(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr24(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr30(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr31(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr32(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr33(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr34(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr41(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr42(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr43(&mut self, _value: u8) {
+        unimplemented!();
+    }
+
+    pub fn set_nr44(&mut self, _value: u8) {
+        unimplemented!();
+    }
+}
