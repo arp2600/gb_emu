@@ -2,7 +2,7 @@ pub mod io_regs;
 pub mod joypad;
 pub mod locations;
 pub mod sizes;
-mod sound_registers;
+pub mod sound_registers;
 mod video_memory;
 pub use self::joypad::JoyPad;
 use self::locations::*;
@@ -47,6 +47,10 @@ impl Memory {
 
     pub fn get_video_memory(&mut self) -> &mut VideoMemory {
         &mut self.vram
+    }
+
+    pub fn get_sound_registers(&mut self) -> &mut SoundRegisters {
+        &mut self.sound_registers
     }
 
     pub fn get_cartridge(&self) -> &Cartridge {

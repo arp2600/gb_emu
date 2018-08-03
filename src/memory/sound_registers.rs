@@ -1,10 +1,19 @@
 use bit_ops::BitGetSet;
+use std::collections::VecDeque;
 use std::default::Default;
+
+#[derive(Debug)]
+pub enum AudioAction {
+    SetFrequency(u8, f32),
+    RestartSound(u8),
+}
 
 #[derive(Default)]
 pub struct SoundRegisters {
     nr51: u8,
+    channel1: Channel2,
     channel2: Channel2,
+    pub actions: VecDeque<AudioAction>,
 }
 
 enum EnvelopeDirection {
@@ -38,7 +47,7 @@ impl SoundRegisters {
 
     pub fn set_nr52(&mut self, value: u8) {
         if value.get_bit(7) {
-            println!("turning on sound");
+            eprintln!("turning on sound");
         } else {
             // Turning off the sound clears all sound registers
             unimplemented!("error: turning off sound is unimplemented");
@@ -48,13 +57,13 @@ impl SoundRegisters {
     pub fn set_nr51(&mut self, value: u8) {
         if self.nr51 != value {
             self.nr51 = value;
-            println!("setting nr51 to {:#04x}", value);
+            eprintln!("setting nr51 to {:#04x}", value);
             for i in 0..4 {
                 if value.get_bit(i) {
-                    println!("outputing sound {} to SO1", i + 1);
+                    eprintln!("outputing sound {} to SO1", i + 1);
                 }
                 if value.get_bit(4 + i) {
-                    println!("outputing sound {} to SO2", i + 1);
+                    eprintln!("outputing sound {} to SO2", i + 1);
                 }
             }
         }
@@ -62,15 +71,15 @@ impl SoundRegisters {
 
     pub fn set_nr50(&mut self, value: u8) {
         if value.get_bit(7) {
-            println!("outputing vin to SO2");
+            eprintln!("outputing vin to SO2");
         }
         if value.get_bit(3) {
-            println!("outputing vin to SO1");
+            eprintln!("outputing vin to SO1");
         }
         let so2_level = (value >> 4) & 0b11;
-        println!("so2 level {}", so2_level);
+        eprintln!("so2 level {}", so2_level);
         let so1_level = value & 0b11;
-        println!("so1 level {}", so1_level);
+        eprintln!("so1 level {}", so1_level);
     }
 
     pub fn set_nr10(&mut self, _value: u8) {}
@@ -79,9 +88,34 @@ impl SoundRegisters {
 
     pub fn set_nr12(&mut self, _value: u8) {}
 
-    pub fn set_nr13(&mut self, _value: u8) {}
+    pub fn set_nr13(&mut self, value: u8) {
+        let c = &mut self.channel1;
 
-    pub fn set_nr14(&mut self, _value: u8) {}
+        c.frequency_data = {
+            let x = u16::from(value);
+            (c.frequency_data & 0xff00) | x
+        };
+        c.frequency = 131072.0 / (2048.0 - c.frequency_data as f32);
+        self.actions
+            .push_back(AudioAction::SetFrequency(1, c.frequency));
+    }
+
+    pub fn set_nr14(&mut self, value: u8) {
+        let c = &mut self.channel1;
+
+        if value.get_bit(7) {
+            self.actions.push_back(AudioAction::RestartSound(2));
+        }
+        c.use_length = value.get_bit(6);
+
+        c.frequency_data = {
+            let x = u16::from(value & 0b111) << 8;
+            (c.frequency_data & 0x00ff) | x
+        };
+        c.frequency = 131072.0 / (2048.0 - c.frequency_data as f32);
+        self.actions
+            .push_back(AudioAction::SetFrequency(1, c.frequency));
+    }
 
     pub fn set_nr21(&mut self, value: u8) {
         let c = &mut self.channel2;
@@ -111,13 +145,15 @@ impl SoundRegisters {
             (c.frequency_data & 0xff00) | x
         };
         c.frequency = 131072.0 / (2048.0 - c.frequency_data as f32);
+        self.actions
+            .push_back(AudioAction::SetFrequency(2, c.frequency));
     }
 
     pub fn set_nr24(&mut self, value: u8) {
         let c = &mut self.channel2;
 
         if value.get_bit(7) {
-            println!("Restarting sound")
+            self.actions.push_back(AudioAction::RestartSound(2));
         }
         c.use_length = value.get_bit(6);
 
@@ -126,6 +162,8 @@ impl SoundRegisters {
             (c.frequency_data & 0x00ff) | x
         };
         c.frequency = 131072.0 / (2048.0 - c.frequency_data as f32);
+        self.actions
+            .push_back(AudioAction::SetFrequency(2, c.frequency));
     }
 
     pub fn set_nr30(&mut self, _value: u8) {}
@@ -134,9 +172,34 @@ impl SoundRegisters {
 
     pub fn set_nr32(&mut self, _value: u8) {}
 
-    pub fn set_nr33(&mut self, _value: u8) {}
+    pub fn set_nr33(&mut self, value: u8) {
+        let c = &mut self.channel1;
 
-    pub fn set_nr34(&mut self, _value: u8) {}
+        c.frequency_data = {
+            let x = u16::from(value);
+            (c.frequency_data & 0xff00) | x
+        };
+        c.frequency = 131072.0 / (2048.0 - c.frequency_data as f32);
+        self.actions
+            .push_back(AudioAction::SetFrequency(3, c.frequency));
+    }
+
+    pub fn set_nr34(&mut self, value: u8) {
+        let c = &mut self.channel1;
+
+        if value.get_bit(7) {
+            self.actions.push_back(AudioAction::RestartSound(2));
+        }
+        c.use_length = value.get_bit(6);
+
+        c.frequency_data = {
+            let x = u16::from(value & 0b111) << 8;
+            (c.frequency_data & 0x00ff) | x
+        };
+        c.frequency = 131072.0 / (2048.0 - c.frequency_data as f32);
+        self.actions
+            .push_back(AudioAction::SetFrequency(3, c.frequency));
+    }
 
     pub fn set_nr41(&mut self, _value: u8) {}
 

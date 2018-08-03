@@ -13,6 +13,7 @@ mod timer;
 use cartridge::Cartridge;
 use cpu::Cpu;
 use lcd::LCD;
+pub use memory::sound_registers::AudioAction;
 pub use memory::JoyPad;
 use memory::Memory;
 use registers::Registers;
@@ -22,6 +23,7 @@ use timer::Timer;
 pub trait App {
     fn draw_line(&mut self, line_buffer: &[u8], line_index: u8);
     fn update(&mut self, joypad: &mut JoyPad) -> Command;
+    fn update_audio(&mut self, action: AudioAction);
 }
 
 pub enum Command {
@@ -78,6 +80,12 @@ impl Emulator {
         {
             let vram = self.memory.get_video_memory();
             self.lcd.tick(vram, self.cpu.get_cycles(), app);
+        }
+        {
+            let sound_registers = self.memory.get_sound_registers();
+            while let Some(action) = sound_registers.actions.pop_front() {
+                app.update_audio(action);
+            }
         }
         self.cpu.tick(&mut self.memory, self.tracing);
         self.timer.tick(&mut self.memory, self.cpu.get_cycles());
