@@ -13,6 +13,7 @@ pub struct SoundRegisters {
     nr51: u8,
     channel1: Channel2,
     channel2: Channel2,
+    channel3: Channel2,
     pub actions: VecDeque<AudioAction>,
 }
 
@@ -104,7 +105,7 @@ impl SoundRegisters {
         let c = &mut self.channel1;
 
         if value.get_bit(7) {
-            self.actions.push_back(AudioAction::RestartSound(2));
+            self.actions.push_back(AudioAction::RestartSound(1));
         }
         c.use_length = value.get_bit(6);
 
@@ -173,7 +174,7 @@ impl SoundRegisters {
     pub fn set_nr32(&mut self, _value: u8) {}
 
     pub fn set_nr33(&mut self, value: u8) {
-        let c = &mut self.channel1;
+        let c = &mut self.channel3;
 
         c.frequency_data = {
             let x = u16::from(value);
@@ -185,10 +186,10 @@ impl SoundRegisters {
     }
 
     pub fn set_nr34(&mut self, value: u8) {
-        let c = &mut self.channel1;
+        let c = &mut self.channel3;
 
         if value.get_bit(7) {
-            self.actions.push_back(AudioAction::RestartSound(2));
+            self.actions.push_back(AudioAction::RestartSound(3));
         }
         c.use_length = value.get_bit(6);
 
