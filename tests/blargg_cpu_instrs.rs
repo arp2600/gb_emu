@@ -1,5 +1,5 @@
 extern crate gb_emu;
-use gb_emu::{App, Command, Emulator, JoyPad};
+use gb_emu::{App, AudioAction, Command, Emulator, JoyPad};
 use std::path::Path;
 use std::str;
 
@@ -74,6 +74,7 @@ impl App for DummyApp {
     fn update(&mut self, _: &mut JoyPad) -> Command {
         return Command::Stop;
     }
+    fn update_audio(&mut self, _: AudioAction, _: f64) {}
 }
 
 fn run_test_rom(test_rom: &str, max_cycles: u64) {

@@ -3,6 +3,7 @@ use self::png_encode_mini::write_rgba_from_u8;
 use super::LCD;
 use cartridge::Cartridge;
 use memory::locations::*;
+use memory::sound_registers::AudioAction;
 use memory::{io_regs, JoyPad, Memory, VideoMemory};
 use std::fs::File;
 use std::io::prelude::*;
@@ -16,6 +17,7 @@ impl App for DummyApp {
     fn update(&mut self, _: &mut JoyPad) -> Command {
         return Command::Stop;
     }
+    fn update_audio(&mut self, _: AudioAction, _: f64) {}
 }
 
 // Check lcd against old algorithm for calculating ly register
@@ -177,6 +179,8 @@ impl App for BufferApp {
     fn update(&mut self, _: &mut JoyPad) -> Command {
         return Command::Stop;
     }
+
+    fn update_audio(&mut self, _: AudioAction, _: f64) {}
 }
 
 #[test]

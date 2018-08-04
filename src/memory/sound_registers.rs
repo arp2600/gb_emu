@@ -51,7 +51,7 @@ impl SoundRegisters {
             eprintln!("turning on sound");
         } else {
             // Turning off the sound clears all sound registers
-            unimplemented!("error: turning off sound is unimplemented");
+            eprintln!("warning: turning off sound is unimplemented");
         }
     }
 

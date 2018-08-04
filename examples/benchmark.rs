@@ -1,5 +1,5 @@
 extern crate gb_emu;
-use gb_emu::{App, Command, Emulator, JoyPad};
+use gb_emu::{App, AudioAction, Command, Emulator, JoyPad};
 use std::time::{Duration, Instant};
 
 struct BenchmarkApp {
@@ -17,6 +17,8 @@ impl App for BenchmarkApp {
             Command::Continue
         }
     }
+
+    fn update_audio(&mut self, _: AudioAction, _: f64) {}
 }
 
 fn main() {

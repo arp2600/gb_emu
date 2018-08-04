@@ -1,5 +1,5 @@
 extern crate gb_emu;
-use gb_emu::{App, Command, Emulator, JoyPad};
+use gb_emu::{App, AudioAction, Command, Emulator, JoyPad};
 use std::str;
 
 struct DummyApp {}
@@ -8,6 +8,7 @@ impl App for DummyApp {
     fn update(&mut self, _: &mut JoyPad) -> Command {
         return Command::Stop;
     }
+    fn update_audio(&mut self, _: AudioAction, _: f64) {}
 }
 
 fn main() {
