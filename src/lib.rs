@@ -23,7 +23,7 @@ use timer::Timer;
 pub trait App {
     fn draw_line(&mut self, line_buffer: &[u8], line_index: u8);
     fn update(&mut self, joypad: &mut JoyPad) -> Command;
-    fn update_audio(&mut self, action: AudioAction);
+    fn update_audio(&mut self, action: AudioAction, cpu_time: f64);
 }
 
 pub enum Command {
@@ -83,8 +83,10 @@ impl Emulator {
         }
         {
             let sound_registers = self.memory.get_sound_registers();
+            let cycles = self.cpu.get_cycles();
+            let time = cycles as f64 / cpu::CLOCK_SPEED as f64;
             while let Some(action) = sound_registers.actions.pop_front() {
-                app.update_audio(action);
+                app.update_audio(action, time);
             }
         }
         self.cpu.tick(&mut self.memory, self.tracing);
