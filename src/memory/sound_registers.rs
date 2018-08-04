@@ -5,18 +5,20 @@ use std::default::Default;
 #[derive(Debug)]
 pub enum AudioAction {
     SetFrequency(u8, f32),
+    SetAmplitude(u8, f32),
     RestartSound(u8),
 }
 
 #[derive(Default)]
 pub struct SoundRegisters {
     nr51: u8,
-    channel1: Channel2,
-    channel2: Channel2,
-    channel3: Channel2,
+    channel1: Channel,
+    channel2: Channel,
+    channel3: Channel,
     pub actions: VecDeque<AudioAction>,
 }
 
+#[derive(Debug)]
 enum EnvelopeDirection {
     Decrease,
     Increase,
@@ -29,7 +31,8 @@ impl Default for EnvelopeDirection {
 }
 
 #[derive(Default)]
-struct Channel2 {
+struct Channel {
+    index: u8,
     frequency_data: u16,
     frequency: f32,
     duty_cycle: u8,
@@ -43,7 +46,21 @@ struct Channel2 {
 
 impl SoundRegisters {
     pub fn new() -> SoundRegisters {
-        Default::default()
+        SoundRegisters {
+            channel1: Channel {
+                index: 1,
+                ..Default::default()
+            },
+            channel2: Channel {
+                index: 2,
+                ..Default::default()
+            },
+            channel3: Channel {
+                index: 3,
+                ..Default::default()
+            },
+            ..Default::default()
+        }
     }
 
     pub fn set_nr52(&mut self, value: u8) {
@@ -87,7 +104,10 @@ impl SoundRegisters {
 
     pub fn set_nr11(&mut self, _value: u8) {}
 
-    pub fn set_nr12(&mut self, _value: u8) {}
+    pub fn set_nr12(&mut self, value: u8) {
+        let c = &mut self.channel1;
+        set_channel_volume_envelope_register(c, value, &mut self.actions);
+    }
 
     pub fn set_nr13(&mut self, value: u8) {
         let c = &mut self.channel1;
@@ -128,14 +148,7 @@ impl SoundRegisters {
 
     pub fn set_nr22(&mut self, value: u8) {
         let c = &mut self.channel2;
-
-        c.envelope_start_value = value >> 4;
-        c.envelope_direction = if value.get_bit(3) {
-            EnvelopeDirection::Increase
-        } else {
-            EnvelopeDirection::Decrease
-        };
-        c.envelope_sweep_num = value & 0b111;
+        set_channel_volume_envelope_register(c, value, &mut self.actions);
     }
 
     pub fn set_nr23(&mut self, value: u8) {
@@ -209,4 +222,21 @@ impl SoundRegisters {
     pub fn set_nr43(&mut self, _value: u8) {}
 
     pub fn set_nr44(&mut self, _value: u8) {}
+}
+
+fn set_channel_volume_envelope_register(
+    channel: &mut Channel,
+    value: u8,
+    actions: &mut VecDeque<AudioAction>,
+) {
+    channel.envelope_start_value = value >> 4;
+    let amp = channel.envelope_start_value as f32 / 16.0;
+    actions.push_back(AudioAction::SetAmplitude(channel.index, amp));
+
+    channel.envelope_direction = if value.get_bit(3) {
+        EnvelopeDirection::Increase
+    } else {
+        EnvelopeDirection::Decrease
+    };
+    channel.envelope_sweep_num = value & 0b111;
 }
