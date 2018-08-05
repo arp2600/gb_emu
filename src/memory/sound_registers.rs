@@ -7,6 +7,7 @@ pub enum AudioAction {
     SetFrequency(u8, f32),
     SetAmplitude(u8, f32),
     RestartSound(u8),
+    SetPulseWidth(u8, f32),
 }
 
 #[derive(Default)]
@@ -105,18 +106,20 @@ impl SoundRegisters {
     }
 
     pub fn set_nr14(&mut self, value: u8) {
-        if value.get_bit(7) {
-            self.actions.push_back(AudioAction::RestartSound(1));
-        }
-        let use_length = value.get_bit(6);
-        println!("c1 use_length = {}", use_length);
-
         self.set_frequency_high_data(value, 1);
     }
 
     pub fn set_nr21(&mut self, value: u8) {
         let duty_cycle = value >> 6;
-        println!("c2 duty cycle = {}", duty_cycle);
+        let pw = match duty_cycle {
+            0 => 12.5,
+            1 => 25.0,
+            2 => 50.0,
+            3 => 75.0,
+            _ => unreachable!(),
+        };
+        self.actions.push_back(AudioAction::SetPulseWidth(2, pw));
+
         let t1 = value & 0b1_1111;
         let sound_length = (64.0 - t1 as f32) * (1.0 / 256.0);
         println!("c2 sound length = {}", sound_length);
@@ -131,12 +134,6 @@ impl SoundRegisters {
     }
 
     pub fn set_nr24(&mut self, value: u8) {
-        if value.get_bit(7) {
-            self.actions.push_back(AudioAction::RestartSound(2));
-        }
-        let use_length = value.get_bit(6);
-        println!("c2 use_length = {}", use_length);
-
         self.set_frequency_high_data(value, 2);
     }
 
@@ -151,23 +148,7 @@ impl SoundRegisters {
     }
 
     pub fn set_nr34(&mut self, value: u8) {
-        if value.get_bit(7) {
-            self.actions.push_back(AudioAction::RestartSound(3));
-        }
-        let use_length = value.get_bit(6);
-        println!("c3 use_length = {}", use_length);
-
         self.set_frequency_high_data(value, 3);
-    }
-
-    fn set_frequency_high_data(&mut self, value: u8, chan_num: u8) {
-        let chan_index = usize::from(chan_num - 1);
-
-        let frequency_data = &mut self.frequencies[chan_index];
-        set_frequency_register_high_bits(frequency_data, value);
-        let frequency = calculate_frequency(*frequency_data);
-        self.actions
-            .push_back(AudioAction::SetFrequency(chan_num, frequency));
     }
 
     pub fn set_nr41(&mut self, _value: u8) {}
@@ -208,6 +189,21 @@ impl SoundRegisters {
         set_frequency_register_low_bits(frequency_data, value);
         let frequency = calculate_frequency(*frequency_data);
 
+        self.actions
+            .push_back(AudioAction::SetFrequency(chan_num, frequency));
+    }
+
+    fn set_frequency_high_data(&mut self, value: u8, chan_num: u8) {
+        if value.get_bit(7) {
+            self.actions.push_back(AudioAction::RestartSound(chan_num));
+        }
+        let use_length = value.get_bit(6);
+        println!("c{} use_length = {}", chan_num, use_length);
+
+        let chan_index = usize::from(chan_num - 1);
+        let frequency_data = &mut self.frequencies[chan_index];
+        set_frequency_register_high_bits(frequency_data, value);
+        let frequency = calculate_frequency(*frequency_data);
         self.actions
             .push_back(AudioAction::SetFrequency(chan_num, frequency));
     }
