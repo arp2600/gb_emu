@@ -11,10 +11,28 @@ pub enum AudioAction {
 
 #[derive(Default)]
 pub struct SoundRegisters {
+    // nr10: u8,
+    // nr11: u8,
+    // nr12: u8,
+    // nr13: u8,
+    // nr14: u8,
+    // nr21: u8,
+    // nr22: u8,
+    // nr23: u8,
+    // nr24: u8,
+    // nr30: u8,
+    // nr31: u8,
+    // nr32: u8,
+    // nr33: u8,
+    // nr34: u8,
+    // nr41: u8,
+    // nr42: u8,
+    // nr43: u8,
+    // nr44: u8,
+    // nr50: u8,
     nr51: u8,
-    channel1: Channel,
-    channel2: Channel,
-    channel3: Channel,
+    // nr52: u8,
+    frequencies: [u16; 4],
     pub actions: VecDeque<AudioAction>,
 }
 
@@ -30,35 +48,9 @@ impl Default for EnvelopeDirection {
     }
 }
 
-#[derive(Default)]
-struct Channel {
-    index: u8,
-    frequency_data: u16,
-    frequency: f32,
-    duty_cycle: u8,
-    t1: u8,
-    sound_length: f32,
-    use_length: bool,
-    envelope_start_value: u8,
-    envelope_direction: EnvelopeDirection,
-    envelope_sweep_num: u8,
-}
-
 impl SoundRegisters {
     pub fn new() -> SoundRegisters {
         SoundRegisters {
-            channel1: Channel {
-                index: 1,
-                ..Default::default()
-            },
-            channel2: Channel {
-                index: 2,
-                ..Default::default()
-            },
-            channel3: Channel {
-                index: 3,
-                ..Default::default()
-            },
             ..Default::default()
         }
     }
@@ -105,79 +97,75 @@ impl SoundRegisters {
     pub fn set_nr11(&mut self, _value: u8) {}
 
     pub fn set_nr12(&mut self, value: u8) {
-        let c = &mut self.channel1;
-        set_channel_volume_envelope_register(c, value, &mut self.actions);
+        self.set_channel_volume_envelope_register(0, value);
     }
 
     pub fn set_nr13(&mut self, value: u8) {
-        let c = &mut self.channel1;
-
-        c.frequency_data = {
+        let frequency_data = &mut self.frequencies[0];
+        *frequency_data = {
             let x = u16::from(value);
-            (c.frequency_data & 0xff00) | x
+            (*frequency_data & 0xff00) | x
         };
-        c.frequency = 131072.0 / (2048.0 - c.frequency_data as f32);
+        let frequency = 131072.0 / (2048.0 - *frequency_data as f32);
         self.actions
-            .push_back(AudioAction::SetFrequency(1, c.frequency));
+            .push_back(AudioAction::SetFrequency(1, frequency));
     }
 
     pub fn set_nr14(&mut self, value: u8) {
-        let c = &mut self.channel1;
-
         if value.get_bit(7) {
             self.actions.push_back(AudioAction::RestartSound(1));
         }
-        c.use_length = value.get_bit(6);
+        let use_length = value.get_bit(6);
+        println!("c1 use_length = {}", use_length);
 
-        c.frequency_data = {
+        let frequency_data = &mut self.frequencies[0];
+        *frequency_data = {
             let x = u16::from(value & 0b111) << 8;
-            (c.frequency_data & 0x00ff) | x
+            (*frequency_data & 0x00ff) | x
         };
-        c.frequency = 131072.0 / (2048.0 - c.frequency_data as f32);
+        let frequency = 131072.0 / (2048.0 - *frequency_data as f32);
         self.actions
-            .push_back(AudioAction::SetFrequency(1, c.frequency));
+            .push_back(AudioAction::SetFrequency(1, frequency));
     }
 
     pub fn set_nr21(&mut self, value: u8) {
-        let c = &mut self.channel2;
-
-        c.duty_cycle = value >> 6;
-        c.t1 = value & 0b1_1111;
-        c.sound_length = (64.0 - c.t1 as f32) * (1.0 / 256.0);
+        let duty_cycle = value >> 6;
+        println!("c2 duty cycle = {}", duty_cycle);
+        let t1 = value & 0b1_1111;
+        let sound_length = (64.0 - t1 as f32) * (1.0 / 256.0);
+        println!("c2 sound length = {}", sound_length);
     }
 
     pub fn set_nr22(&mut self, value: u8) {
-        let c = &mut self.channel2;
-        set_channel_volume_envelope_register(c, value, &mut self.actions);
+        self.set_channel_volume_envelope_register(1, value);
     }
 
     pub fn set_nr23(&mut self, value: u8) {
-        let c = &mut self.channel2;
-
-        c.frequency_data = {
+        let frequency_data = &mut self.frequencies[1];
+        *frequency_data = {
             let x = u16::from(value);
-            (c.frequency_data & 0xff00) | x
+            (*frequency_data & 0xff00) | x
         };
-        c.frequency = 131072.0 / (2048.0 - c.frequency_data as f32);
+        let frequency = 131072.0 / (2048.0 - *frequency_data as f32);
         self.actions
-            .push_back(AudioAction::SetFrequency(2, c.frequency));
+            .push_back(AudioAction::SetFrequency(2, frequency));
     }
 
     pub fn set_nr24(&mut self, value: u8) {
-        let c = &mut self.channel2;
-
         if value.get_bit(7) {
             self.actions.push_back(AudioAction::RestartSound(2));
         }
-        c.use_length = value.get_bit(6);
+        let use_length = value.get_bit(6);
+        println!("c2 use_length = {}", use_length);
 
-        c.frequency_data = {
+        let frequency_data = &mut self.frequencies[1];
+        *frequency_data = {
             let x = u16::from(value & 0b111) << 8;
-            (c.frequency_data & 0x00ff) | x
+            (*frequency_data & 0x00ff) | x
         };
-        c.frequency = 131072.0 / (2048.0 - c.frequency_data as f32);
+        let frequency = 131072.0 / (2048.0 - *frequency_data as f32);
         self.actions
-            .push_back(AudioAction::SetFrequency(2, c.frequency));
+            .push_back(AudioAction::SetFrequency(2, frequency));
     }
 
     pub fn set_nr30(&mut self, _value: u8) {}
@@ -187,32 +175,31 @@ impl SoundRegisters {
     pub fn set_nr32(&mut self, _value: u8) {}
 
     pub fn set_nr33(&mut self, value: u8) {
-        let c = &mut self.channel3;
-
-        c.frequency_data = {
+        let frequency_data = &mut self.frequencies[2];
+        *frequency_data = {
             let x = u16::from(value);
-            (c.frequency_data & 0xff00) | x
+            (*frequency_data & 0xff00) | x
         };
-        c.frequency = 131072.0 / (2048.0 - c.frequency_data as f32);
+        let frequency = 131072.0 / (2048.0 - *frequency_data as f32);
         self.actions
-            .push_back(AudioAction::SetFrequency(3, c.frequency));
+            .push_back(AudioAction::SetFrequency(3, frequency));
     }
 
     pub fn set_nr34(&mut self, value: u8) {
-        let c = &mut self.channel3;
-
         if value.get_bit(7) {
             self.actions.push_back(AudioAction::RestartSound(3));
         }
-        c.use_length = value.get_bit(6);
+        let use_length = value.get_bit(6);
+        println!("c3 use_length = {}", use_length);
 
-        c.frequency_data = {
+        let frequency_data = &mut self.frequencies[2];
+        *frequency_data = {
             let x = u16::from(value & 0b111) << 8;
-            (c.frequency_data & 0x00ff) | x
+            (*frequency_data & 0x00ff) | x
         };
-        c.frequency = 131072.0 / (2048.0 - c.frequency_data as f32);
+        let frequency = 131072.0 / (2048.0 - *frequency_data as f32);
         self.actions
-            .push_back(AudioAction::SetFrequency(3, c.frequency));
+            .push_back(AudioAction::SetFrequency(3, frequency));
     }
 
     pub fn set_nr41(&mut self, _value: u8) {}
@@ -222,21 +209,28 @@ impl SoundRegisters {
     pub fn set_nr43(&mut self, _value: u8) {}
 
     pub fn set_nr44(&mut self, _value: u8) {}
-}
 
-fn set_channel_volume_envelope_register(
-    channel: &mut Channel,
-    value: u8,
-    actions: &mut VecDeque<AudioAction>,
-) {
-    channel.envelope_start_value = value >> 4;
-    let amp = channel.envelope_start_value as f32 / 16.0;
-    actions.push_back(AudioAction::SetAmplitude(channel.index, amp));
+    fn set_channel_volume_envelope_register(&mut self, chan_index: usize, value: u8) {
+        let envelope_start_value = value >> 4;
+        let amp = envelope_start_value as f32 / 16.0;
+        self.actions
+            .push_back(AudioAction::SetAmplitude((chan_index + 1) as u8, amp));
 
-    channel.envelope_direction = if value.get_bit(3) {
-        EnvelopeDirection::Increase
-    } else {
-        EnvelopeDirection::Decrease
-    };
-    channel.envelope_sweep_num = value & 0b111;
+        let envelope_direction = if value.get_bit(3) {
+            EnvelopeDirection::Increase
+        } else {
+            EnvelopeDirection::Decrease
+        };
+        println!(
+            "c{} envelope_direction = {:?}",
+            chan_index + 1,
+            envelope_direction
+        );
+        let envelope_sweep_num = value & 0b111;
+        println!(
+            "c{} envelope_sweep_num = {}",
+            chan_index + 1,
+            envelope_sweep_num
+        );
+    }
 }
