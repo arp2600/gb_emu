@@ -101,14 +101,7 @@ impl SoundRegisters {
     }
 
     pub fn set_nr13(&mut self, value: u8) {
-        let frequency_data = &mut self.frequencies[0];
-        *frequency_data = {
-            let x = u16::from(value);
-            (*frequency_data & 0xff00) | x
-        };
-        let frequency = 131072.0 / (2048.0 - *frequency_data as f32);
-        self.actions
-            .push_back(AudioAction::SetFrequency(1, frequency));
+        self.set_frequency_low_data(value, 1);
     }
 
     pub fn set_nr14(&mut self, value: u8) {
@@ -118,14 +111,7 @@ impl SoundRegisters {
         let use_length = value.get_bit(6);
         println!("c1 use_length = {}", use_length);
 
-        let frequency_data = &mut self.frequencies[0];
-        *frequency_data = {
-            let x = u16::from(value & 0b111) << 8;
-            (*frequency_data & 0x00ff) | x
-        };
-        let frequency = 131072.0 / (2048.0 - *frequency_data as f32);
-        self.actions
-            .push_back(AudioAction::SetFrequency(1, frequency));
+        self.set_frequency_high_data(value, 1);
     }
 
     pub fn set_nr21(&mut self, value: u8) {
@@ -141,14 +127,7 @@ impl SoundRegisters {
     }
 
     pub fn set_nr23(&mut self, value: u8) {
-        let frequency_data = &mut self.frequencies[1];
-        *frequency_data = {
-            let x = u16::from(value);
-            (*frequency_data & 0xff00) | x
-        };
-        let frequency = 131072.0 / (2048.0 - *frequency_data as f32);
-        self.actions
-            .push_back(AudioAction::SetFrequency(2, frequency));
+        self.set_frequency_low_data(value, 2);
     }
 
     pub fn set_nr24(&mut self, value: u8) {
@@ -158,14 +137,7 @@ impl SoundRegisters {
         let use_length = value.get_bit(6);
         println!("c2 use_length = {}", use_length);
 
-        let frequency_data = &mut self.frequencies[1];
-        *frequency_data = {
-            let x = u16::from(value & 0b111) << 8;
-            (*frequency_data & 0x00ff) | x
-        };
-        let frequency = 131072.0 / (2048.0 - *frequency_data as f32);
-        self.actions
-            .push_back(AudioAction::SetFrequency(2, frequency));
+        self.set_frequency_high_data(value, 2);
     }
 
     pub fn set_nr30(&mut self, _value: u8) {}
@@ -175,14 +147,7 @@ impl SoundRegisters {
     pub fn set_nr32(&mut self, _value: u8) {}
 
     pub fn set_nr33(&mut self, value: u8) {
-        let frequency_data = &mut self.frequencies[2];
-        *frequency_data = {
-            let x = u16::from(value);
-            (*frequency_data & 0xff00) | x
-        };
-        let frequency = 131072.0 / (2048.0 - *frequency_data as f32);
-        self.actions
-            .push_back(AudioAction::SetFrequency(3, frequency));
+        self.set_frequency_low_data(value, 3);
     }
 
     pub fn set_nr34(&mut self, value: u8) {
@@ -192,14 +157,17 @@ impl SoundRegisters {
         let use_length = value.get_bit(6);
         println!("c3 use_length = {}", use_length);
 
-        let frequency_data = &mut self.frequencies[2];
-        *frequency_data = {
-            let x = u16::from(value & 0b111) << 8;
-            (*frequency_data & 0x00ff) | x
-        };
-        let frequency = 131072.0 / (2048.0 - *frequency_data as f32);
+        self.set_frequency_high_data(value, 3);
+    }
+
+    fn set_frequency_high_data(&mut self, value: u8, chan_num: u8) {
+        let chan_index = usize::from(chan_num - 1);
+
+        let frequency_data = &mut self.frequencies[chan_index];
+        set_frequency_register_high_bits(frequency_data, value);
+        let frequency = calculate_frequency(*frequency_data);
         self.actions
-            .push_back(AudioAction::SetFrequency(3, frequency));
+            .push_back(AudioAction::SetFrequency(chan_num, frequency));
     }
 
     pub fn set_nr41(&mut self, _value: u8) {}
@@ -233,4 +201,32 @@ impl SoundRegisters {
             envelope_sweep_num
         );
     }
+
+    fn set_frequency_low_data(&mut self, value: u8, chan_num: u8) {
+        let chan_index = usize::from(chan_num - 1);
+        let frequency_data = &mut self.frequencies[chan_index];
+        set_frequency_register_low_bits(frequency_data, value);
+        let frequency = calculate_frequency(*frequency_data);
+
+        self.actions
+            .push_back(AudioAction::SetFrequency(chan_num, frequency));
+    }
+}
+
+fn set_frequency_register_low_bits(register: &mut u16, value: u8) {
+    *register = {
+        let x = u16::from(value);
+        (*register & 0xff00) | x
+    };
+}
+
+fn set_frequency_register_high_bits(register: &mut u16, value: u8) {
+    *register = {
+        let x = u16::from(value & 0b111) << 8;
+        (*register & 0x00ff) | x
+    };
+}
+
+fn calculate_frequency(register: u16) -> f32 {
+    131072.0 / (2048.0 - register as f32)
 }
