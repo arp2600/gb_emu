@@ -95,7 +95,17 @@ impl SoundRegisters {
 
     pub fn set_nr10(&mut self, _value: u8) {}
 
-    pub fn set_nr11(&mut self, _value: u8) {}
+    pub fn set_nr11(&mut self, value: u8) {
+        let duty_cycle = value >> 6;
+        let pw = match duty_cycle {
+            0 => 12.5,
+            1 => 25.0,
+            2 => 50.0,
+            3 => 75.0,
+            _ => unreachable!(),
+        };
+        self.actions.push_back(AudioAction::SetPulseWidth(1, pw));
+    }
 
     pub fn set_nr12(&mut self, value: u8) {
         self.set_channel_volume_envelope_register(0, value);
