@@ -151,7 +151,17 @@ impl SoundRegisters {
 
     pub fn set_nr31(&mut self, _value: u8) {}
 
-    pub fn set_nr32(&mut self, _value: u8) {}
+    pub fn set_nr32(&mut self, value: u8) {
+        let amp = (value >> 5) & 0b11;
+        let amp = match amp {
+            0b00 => 0.0,
+            0b01 => 1.0,
+            0b10 => 0.5,
+            0b11 => 0.25,
+            _ => unreachable!(),
+        };
+        self.actions.push_back(AudioAction::SetAmplitude(3, amp));
+    }
 
     pub fn set_nr33(&mut self, value: u8) {
         self.set_frequency_low_data(value, 3);
