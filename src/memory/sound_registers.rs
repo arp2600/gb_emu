@@ -8,6 +8,7 @@ pub enum AudioAction {
     SetAmplitude(u8, f32),
     RestartSound(u8),
     SetPulseWidth(u8, f32),
+    SetWavetable(usize, f32),
 }
 
 #[derive(Default)]
@@ -34,6 +35,7 @@ pub struct SoundRegisters {
     nr51: u8,
     // nr52: u8,
     frequencies: [u16; 4],
+    wave_ram: [u8; 16],
     pub actions: VecDeque<AudioAction>,
 }
 
@@ -54,6 +56,18 @@ impl SoundRegisters {
         SoundRegisters {
             ..Default::default()
         }
+    }
+
+    pub fn set_wave_ram(&mut self, index: usize, value: u8) {
+        self.wave_ram[index] = value;
+        let i = index * 2;
+        let a = (value >> 4) as f32;
+        let b = (value & 0xf) as f32;
+        let a = (a / 7.5) - 1.0;
+        let b = (b / 7.5) - 1.0;
+
+        self.actions.push_back(AudioAction::SetWavetable(i, a));
+        self.actions.push_back(AudioAction::SetWavetable(i + 1, b));
     }
 
     pub fn set_nr52(&mut self, value: u8) {

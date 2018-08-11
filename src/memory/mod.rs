@@ -179,6 +179,10 @@ impl Memory {
             io_regs::NR50 => self.sound_registers.set_nr50(value),
             io_regs::NR51 => self.sound_registers.set_nr51(value),
             io_regs::NR52 => self.sound_registers.set_nr52(value),
+            io_regs::WAVE_PATTERN_RAM_START...io_regs::WAVE_PATTERN_RAM_END => {
+                let i = index - io_regs::WAVE_PATTERN_RAM_START;
+                self.sound_registers.set_wave_ram(i, value);
+            }
             _ => {
                 eprintln_once_per_key!(
                     index,
