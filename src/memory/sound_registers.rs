@@ -9,6 +9,7 @@ pub enum AudioAction {
     RestartSound(u8),
     SetPulseWidth(u8, f32),
     SetWavetable(usize, f32),
+    SetEnvelope(u8, f32, f32), // amp, duration
 }
 
 #[derive(Default)]
@@ -187,17 +188,24 @@ impl SoundRegisters {
 
     pub fn set_nr41(&mut self, _value: u8) {}
 
-    pub fn set_nr42(&mut self, _value: u8) {}
+    pub fn set_nr42(&mut self, value: u8) {
+        self.set_channel_volume_envelope_register(3, value);
+    }
 
     pub fn set_nr43(&mut self, _value: u8) {}
 
-    pub fn set_nr44(&mut self, _value: u8) {}
+    pub fn set_nr44(&mut self, value: u8) {
+        if value.get_bit(7) {
+            self.actions.push_back(AudioAction::RestartSound(4));
+        }
+    }
 
     fn set_channel_volume_envelope_register(&mut self, chan_index: usize, value: u8) {
+        let chan_num = (chan_index + 1) as u8;
         let envelope_start_value = value >> 4;
         let amp = envelope_start_value as f32 / 16.0;
         self.actions
-            .push_back(AudioAction::SetAmplitude((chan_index + 1) as u8, amp));
+            .push_back(AudioAction::SetAmplitude(chan_num, amp));
 
         let envelope_direction = if value.get_bit(3) {
             EnvelopeDirection::Increase
@@ -215,6 +223,9 @@ impl SoundRegisters {
             chan_index + 1,
             envelope_sweep_num
         );
+        let duration = envelope_sweep_num as f32 * (1.0 / 64.0);
+        let action = AudioAction::SetEnvelope(chan_num, amp, duration);
+        self.actions.push_back(action);
     }
 
     fn set_frequency_low_data(&mut self, value: u8, chan_num: u8) {
