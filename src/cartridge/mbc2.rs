@@ -1,5 +1,5 @@
 use super::{Cartridge, ROM_BANK_SIZE};
-use memory::locations::*;
+use crate::memory::locations::*;
 
 const RAMEND: usize = EXRAM_START + 512;
 

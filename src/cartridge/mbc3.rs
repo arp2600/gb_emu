@@ -1,6 +1,6 @@
 use super::{Cartridge, ROM_BANK_SIZE};
-use memory::locations::*;
-use memory::sizes;
+use crate::memory::locations::*;
+use crate::memory::sizes;
 use std::default::Default;
 
 #[derive(Default)]

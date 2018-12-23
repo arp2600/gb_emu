@@ -1,13 +1,13 @@
 extern crate png_encode_mini;
 use self::png_encode_mini::write_rgba_from_u8;
 use super::LCD;
-use cartridge::Cartridge;
-use memory::locations::*;
-use memory::{io_regs, JoyPad, Memory, VideoMemory};
+use crate::cartridge::Cartridge;
+use crate::memory::locations::*;
+use crate::memory::{io_regs, JoyPad, Memory, VideoMemory};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader, Read, Write};
-use {App, Command};
+use crate::{App, Command};
 
 struct DummyApp {}
 

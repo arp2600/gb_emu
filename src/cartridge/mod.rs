@@ -6,7 +6,7 @@ use self::mbc1::Mbc1;
 use self::mbc2::Mbc2;
 use self::mbc3::Mbc3;
 use self::rom_only::RomOnly;
-use memory::locations::*;
+use crate::memory::locations::*;
 use std::fs;
 
 const ROM_BANK_SIZE: usize = 0x4000;
@@ -60,8 +60,8 @@ impl Cartridge {
 
 #[cfg(test)]
 mod tests {
-    use cartridge::ROM_BANK_SIZE;
-    use cartridge::{Cartridge, RomOnly};
+    use crate::cartridge::ROM_BANK_SIZE;
+    use crate::cartridge::{Cartridge, RomOnly};
 
     impl Cartridge {
         pub fn create_dummy() -> Box<Cartridge> {

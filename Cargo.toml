@@ -2,6 +2,7 @@
 name = "gb_emu"
 version = "0.1.0"
 authors = ["George Roger <georger@xmos.com>"]
+edition = "2018"
 
 [dependencies]
 lazy_static = "1.0.1"

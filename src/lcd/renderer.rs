@@ -1,7 +1,7 @@
 use super::pixel_iterator::PixelIterator;
-use bit_ops::BitGetSet;
-use memory::{locations::*, VideoMemory};
-use App;
+use crate::bit_ops::BitGetSet;
+use crate::memory::{locations::*, VideoMemory};
+use crate::App;
 
 pub struct Renderer {
     background_screen_buffer: [u8; 256 * 256],
