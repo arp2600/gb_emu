@@ -4,10 +4,10 @@ use super::LCD;
 use crate::cartridge::Cartridge;
 use crate::memory::locations::*;
 use crate::memory::{io_regs, JoyPad, Memory, VideoMemory};
+use crate::{App, Command};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader, Read, Write};
-use crate::{App, Command};
 
 struct DummyApp {}
 

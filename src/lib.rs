@@ -16,8 +16,8 @@ use crate::lcd::LCD;
 pub use crate::memory::JoyPad;
 use crate::memory::Memory;
 use crate::registers::Registers;
-use std::fs;
 use crate::timer::Timer;
+use std::fs;
 
 pub trait App {
     fn draw_line(&mut self, line_buffer: &[u8], line_index: u8);
