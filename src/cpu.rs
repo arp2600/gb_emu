@@ -19,7 +19,7 @@ enum Interrupt {
 }
 
 impl Interrupt {
-    fn get_address(&self) -> u16 {
+    fn get_address(self) -> u16 {
         match self {
             Interrupt::VBlank => 0x40,
             Interrupt::Stat => 0x48,
@@ -27,7 +27,7 @@ impl Interrupt {
         }
     }
 
-    fn reset_flag(&self, memory: &mut Memory) {
+    fn reset_flag(self, memory: &mut Memory) {
         let flag = memory.get_io(io_regs::IF);
         let new_flag = match self {
             Interrupt::VBlank => flag.reset_bit(0),

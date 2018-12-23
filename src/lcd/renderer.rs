@@ -30,7 +30,7 @@ impl Renderer {
             let tile_index = u16::from(vram[tile_map_start as usize + i]);
             let tile_address = match tile_data_start {
                 TILE_DATA_1 => {
-                    let x = (tile_index as i8) as i16;
+                    let x = i16::from(tile_index as i8);
                     assert!(x >= -128 && x <= 127, "x = {}", x);
                     let x = ((x + 128) * 16) as u16;
                     tile_data_start + x
@@ -62,7 +62,7 @@ impl Renderer {
         let y = tile_index / 32;
 
         let tile_map_cache = &mut self.background_tile_map_cache;
-        let tile_address = tile_map_cache[usize::from(x + y * 32)];
+        let tile_address = tile_map_cache[x + y * 32];
         for yi in 0..8 {
             let tile_y_index = yi as u16;
             let line_address = tile_address + tile_y_index * 2;
@@ -148,7 +148,7 @@ fn draw_windows(vram: &VideoMemory, line: &mut [u8; 160]) {
         let tile_data_start = vram.get_tile_data_select();
         let tile_address = match tile_data_start {
             TILE_DATA_1 => {
-                let x = (tile_data_index as i8) as i16;
+                let x = i16::from(tile_data_index as i8);
                 assert!(x >= -128 && x <= 127, "x = {}", x);
                 let x = ((x + 128) * 16) as u16;
                 tile_data_start + x
@@ -190,14 +190,14 @@ fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
         let x = vram[oam_index + 1].wrapping_sub(8);
         if y >= vram.regs.ly && y < (vram.regs.ly + sprite_height) {
             let tile_num = {
-                let x = vram[usize::from(oam_index + 2)] as u16;
+                let x = u16::from(vram[oam_index + 2]);
                 if vram.get_sprite_width() == 16 {
-                    x & 0b11111110
+                    x & 0b1111_1110
                 } else {
                     x
                 }
             };
-            let attributes = vram[usize::from(oam_index + 3)];
+            let attributes = vram[oam_index + 3];
 
             let y_flip = attributes.get_bit(6);
             let x_flip = attributes.get_bit(5);
@@ -223,19 +223,17 @@ fn draw_sprites(vram: &VideoMemory, line: &mut [u8; 160]) {
                     usize::from(x) + i
                 };
 
-                if index < line.len() {
-                    if pixel > 0 {
-                        let pixel = pixel + 4 + 4 * palette;
+                if index < line.len() && pixel > 0 {
+                    let pixel = pixel + 4 + 4 * palette;
 
-                        if bg_priority && line[index] > 0 {
-                            continue;
-                        }
+                    if bg_priority && line[index] > 0 {
+                        continue;
+                    }
 
-                        if x_flip {
-                            line[index] = pixel;
-                        } else {
-                            line[index] = pixel;
-                        }
+                    if x_flip {
+                        line[index] = pixel;
+                    } else {
+                        line[index] = pixel;
                     }
                 }
             }

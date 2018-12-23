@@ -136,12 +136,9 @@ impl Index<usize> for VideoMemory {
 
 impl IndexMut<usize> for VideoMemory {
     fn index_mut(&mut self, index: usize) -> &mut u8 {
-        match index {
-            0x8000...0x97ff => {
-                let tile = (index - 0x8000) / 16;
-                self.tile_write_counts[tile] += 1;
-            }
-            _ => (),
+        if let 0x8000...0x97ff = index {
+            let tile = (index - 0x8000) / 16;
+            self.tile_write_counts[tile] += 1;
         }
         match index {
             VRAM_START...VRAM_END => &mut self.vram[index - VRAM_START],
