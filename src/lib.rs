@@ -10,14 +10,14 @@ mod memory;
 mod opcode_table;
 mod registers;
 mod timer;
-use cartridge::Cartridge;
-use cpu::Cpu;
-use lcd::LCD;
-pub use memory::JoyPad;
-use memory::Memory;
-use registers::Registers;
+use crate::cartridge::Cartridge;
+use crate::cpu::Cpu;
+use crate::lcd::LCD;
+pub use crate::memory::JoyPad;
+use crate::memory::Memory;
+use crate::registers::Registers;
 use std::fs;
-use timer::Timer;
+use crate::timer::Timer;
 
 pub trait App {
     fn draw_line(&mut self, line_buffer: &[u8], line_index: u8);

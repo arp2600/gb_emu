@@ -1,4 +1,4 @@
-use memory::VideoMemory;
+use crate::memory::VideoMemory;
 
 #[derive(Default)]
 pub struct ModeUpdater {

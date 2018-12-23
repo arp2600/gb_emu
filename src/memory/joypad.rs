@@ -1,4 +1,4 @@
-use bit_ops::BitGetSet;
+use crate::bit_ops::BitGetSet;
 
 pub struct JoyPad {
     buttons: u8,

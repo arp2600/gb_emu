@@ -1,5 +1,5 @@
 use super::{locations::*, sizes};
-use bit_ops::BitGetSet;
+use crate::bit_ops::BitGetSet;
 use std::default::Default;
 use std::ops::{Index, IndexMut};
 

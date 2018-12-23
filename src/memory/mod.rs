@@ -6,8 +6,8 @@ mod video_memory;
 pub use self::joypad::JoyPad;
 use self::locations::*;
 pub use self::video_memory::VideoMemory;
-use bit_ops::BitGetSet;
-use cartridge::Cartridge;
+use crate::bit_ops::BitGetSet;
+use crate::cartridge::Cartridge;
 use std::collections::HashSet;
 
 pub struct Memory {

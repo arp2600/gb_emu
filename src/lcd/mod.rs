@@ -4,7 +4,7 @@ mod renderer;
 use self::mode_updater::ModeUpdater;
 use self::renderer::Renderer;
 use super::App;
-use memory::VideoMemory;
+use crate::memory::VideoMemory;
 
 pub struct LCD {
     update_time: u64,
