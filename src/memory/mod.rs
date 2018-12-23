@@ -66,7 +66,7 @@ impl Memory {
     }
 
     fn dma_transfer(&mut self, source: u8) {
-        let start_address = source as u16 * 0x100;
+        let start_address = u16::from(source) * 0x100;
         for i in 0..sizes::OAM {
             let v = self.get_u8(start_address + i as u16);
             self.set_u8((OAM_START + i) as u16, v);
